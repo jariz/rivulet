@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 import { error, info, warn } from './services/log';
 import chalk from 'chalk';
 import ip from 'ip';
+import Discovery from './receivers/discovery';
+import Devices from './controllers/devices';
 
 declare var __DEV__: boolean;
 
@@ -19,6 +21,8 @@ export class Server {
             process.exit(1);
         }
         this.setRoutes();
+
+        Discovery.start();
         this.start();
     }
 
@@ -31,9 +35,9 @@ export class Server {
         this.app.listen(this.port, this.onListen);
     };
 
-    private onListen = (err: any): void => {
+    private onListen = (err: Error): void => {
         if (err) {
-            console.error(err);
+            error(`Unable to start server on port ${this.port}`, err);
             return;
         }
 
@@ -49,16 +53,7 @@ export class Server {
     private getPort = (): number => process.env.PORT ? parseInt(process.env.PORT!, 10) : 3000;
 
     private setRoutes = (): void => {
-        this.app.get('/', this.getHomepage);
-    };
-
-    private async getHomepage (req: express.Request, res: express.Response): Promise<express.Response> {
-        try {
-            const thing = await Promise.resolve({ one: 'two' });
-            return res.json({ ...thing, hello: 'world' });
-        } catch (e) {
-            return res.json({ error: e.message });
-        }
+        this.app.get('/devices', Devices);
     };
 }
 
