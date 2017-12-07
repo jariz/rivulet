@@ -1,4 +1,4 @@
-import * as express from 'express';
+import express from 'express';
 import dotenv from 'dotenv';
 import { error, info, warn } from './services/log';
 import chalk from 'chalk';
@@ -27,7 +27,7 @@ export class Server {
     }
 
     private envsOK (): boolean {
-        const notEmpty = (_var: string) => _var in process.env && _var !== '';
+        const notEmpty = (_var: string) => _var in process.env && process.env[_var] !== '';
         return ['RADARR', 'SONARR'].some(type => notEmpty(`${type}_API_URL`) && notEmpty(`${type}_API_KEY`));
     }
 

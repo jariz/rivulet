@@ -37,7 +37,7 @@ const getDeviceInfo = (url: string): Promise<DeviceInfo> =>
                         [childElement.name!]: childElement.elements![0].text!.toString()
                     });
                 })
-                .reduce((a: DeviceInfo, b: DeviceInfo) => Object.assign(a, b));
+                .reduce((a: DeviceInfo, b: DeviceInfo) => Object.assign(a, b), {});
         });
 
 class Discovery {

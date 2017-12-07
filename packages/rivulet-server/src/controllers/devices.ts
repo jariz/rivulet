@@ -9,7 +9,7 @@ Devices.get('/devices', (req: Request, res: Response, next: NextFunction) => {
             .map(([key, val]) => ({
                 [key]: val
             }))
-            .reduce((a, b) => Object.assign(a, b))
+            .reduce((a, b) => Object.assign(a, b), [])
     );
 });
 
