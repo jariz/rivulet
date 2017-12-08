@@ -45,7 +45,7 @@ const getDeviceInfo = (url: string): Promise<DeviceInfo> =>
 
 class Discovery extends EventEmitter {
     discoveredDevices: DeviceMap = new Map();
-    previouslyDiscoveredDevices: DeviceMap = new Map();
+    private previouslyDiscoveredDevices: DeviceMap = new Map();
     private client: Client;
 
     start () {
@@ -63,11 +63,10 @@ class Discovery extends EventEmitter {
         this.previouslyDiscoveredDevices = new Map(this.discoveredDevices);
         this.discoveredDevices = new Map();
 
-        this.client.search('ssdp:all');
         // possible chromecast device
-        // this.client.search(DIAL);
+        this.client.search(DIAL);
         // general media renderer
-        // this.client.search(MEDIA_RENDERER);
+        this.client.search(MEDIA_RENDERER);
 
         // give devices 5 seconds to reply, otherwise assume they 'left'
         setTimeout(() => this.findLeft(), 5000);

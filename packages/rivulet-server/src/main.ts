@@ -8,6 +8,8 @@ import Devices from './controllers/devices';
 import Socket from './socket';
 import { Server as HttpServer } from 'http';
 
+dotenv.config();
+
 declare var __DEV__: boolean;
 
 export class Server {
@@ -16,7 +18,6 @@ export class Server {
     private socket: Socket;
 
     constructor () {
-        dotenv.config();
         this.app = express();
         this.port = this.getPort();
         if (!this.envsOK()) {
