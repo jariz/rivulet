@@ -1,15 +1,18 @@
 import { Client } from 'node-ssdp';
-import { debug, error } from '../services/log';
-import { DIAL, MEDIA_RENDERER } from '../global/serviceTypes';
+import { debug, error } from './services/log';
 import fetch from 'node-fetch';
 import xml, { Element } from 'xml-js';
 import chalk from 'chalk';
+import { EventEmitter } from 'events';
+import { DIAL, MEDIA_RENDERER } from './global/serviceTypes';
 
 type DeviceType = 'chromecast' | 'mediarenderer';
-type Device = {
-    type: DeviceType,
-    name: string,
-    location: string
+export type Device = {
+    usn: string;
+    type: DeviceType;
+    deviceInfo: any;
+    name: string;
+    location: string;
 };
 type DeviceMap = Map<string, Device>;
 type DeviceInfo = { [K: string]: string };
@@ -40,21 +43,34 @@ const getDeviceInfo = (url: string): Promise<DeviceInfo> =>
                 .reduce((a: DeviceInfo, b: DeviceInfo) => Object.assign(a, b), {});
         });
 
-class Discovery {
+class Discovery extends EventEmitter {
     discoveredDevices: DeviceMap = new Map();
+    previouslyDiscoveredDevices: DeviceMap = new Map();
     private client: Client;
 
     start () {
         this.client = new Client({
-            customLogger: (...args: any[]) => debug(chalk`{red SSDP}`, ...args)
+            customLogger: (...args: any[]) => debug(chalk`{black {bgRed  SSDP }}`, ...args)
         });
-        
-        // possible chromecast device
-        this.client.search(DIAL);
-        // general media renderer
-        this.client.search(MEDIA_RENDERER);
-        
+
+        setInterval(() => this.search(), 1000 * 60);
+        this.search();
         this.client.on('response', this.onFound);
+    }
+
+    search () {
+        debug('Initiating SSDP discovery...');
+        this.previouslyDiscoveredDevices = new Map(this.discoveredDevices);
+        this.discoveredDevices = new Map();
+
+        this.client.search('ssdp:all');
+        // possible chromecast device
+        // this.client.search(DIAL);
+        // general media renderer
+        // this.client.search(MEDIA_RENDERER);
+
+        // give devices 5 seconds to reply, otherwise assume they 'left'
+        setTimeout(() => this.findLeft(), 5000);
     }
 
     private onFound = async (headers: any, statusCode: number, rInfo: any) => {
@@ -64,18 +80,14 @@ class Discovery {
         try {
             switch (headers.ST) {
                 case MEDIA_RENDERER: {
-                    if (this.discoveredDevices.has(headers.USN)) {
+                    if (this.previouslyDiscoveredDevices.has(headers.USN)) {
+                        const dev = this.previouslyDiscoveredDevices.get(headers.USN)!;
+                        this.discoveredDevices.set(dev.usn, dev);
                         return;
                     }
                     debug('Discovered media renderer', headers.LOCATION);
                     const deviceInfo = await getDeviceInfo(headers.LOCATION);
-                    const name = deviceInfo.friendlyName || deviceInfo.modelName || 'Unknown device'
-                    debug(chalk`Added new mediarenderer {bold ${name}}`);
-                    this.discoveredDevices.set(headers.USN, {
-                        name,
-                        location: headers.LOCATION,
-                        type: 'mediarenderer'
-                    });
+                    this.addDevice(headers, deviceInfo, 'mediarenderer');
                     break;
                 }
                 case DIAL: {
@@ -85,13 +97,7 @@ class Discovery {
                     debug('Discovered DIAL device', headers.LOCATION, 'checking if it\'s a gcast...');
                     const deviceInfo = await getDeviceInfo(headers.LOCATION);
                     if (deviceInfo.modelName === 'Eureka Dongle') {
-                        const name = deviceInfo.friendlyName || deviceInfo.modelName || 'Unknown device'
-                        debug(chalk`Added new gcast {bold ${name}}`);
-                        this.discoveredDevices.set(headers.USN, {
-                            name: deviceInfo.friendlyName || deviceInfo.modelName || 'Unknown device',
-                            location: headers.LOCATION,
-                            type: 'chromecast'
-                        });
+                        this.addDevice(headers, deviceInfo, 'chromecast');
                     } else {
                         debug(chalk`Device found is a {bold ${deviceInfo.modelName}}, not a gcast, skipping!`);
                     }
@@ -104,6 +110,34 @@ class Discovery {
             error(`Device discovery failed for device ${headers.USN}`, ex);
         }
     };
+
+    private findLeft () {
+        // detect devices that aren't here anymore
+        const leftDevices: DeviceInfo[] = Array.from(this.previouslyDiscoveredDevices.keys())
+            .filter(deviceKey => (
+                !Array.from(this.discoveredDevices.keys()).find(key => deviceKey === key)
+            ))
+            .map(key => this.previouslyDiscoveredDevices.get(key)!);
+
+        for (const device of leftDevices) {
+            debug(chalk`Did not hear back again from {bold ${device.name}} in a timely manner, assuming it left...`);
+            this.emit('device-left', device);
+        }
+    }
+
+    private addDevice (headers: any, deviceInfo: any, type: Device['type']) {
+        const name = deviceInfo.friendlyName || deviceInfo.modelName || 'Unknown device';
+        const device: Device = {
+            usn: headers.USN,
+            name,
+            location: headers.LOCATION,
+            deviceInfo,
+            type
+        };
+        this.emit('device-discovered', device);
+        this.discoveredDevices.set(headers.USN, device);
+        debug(chalk`Added new ${type} {bold ${name}} {dim ${headers.USN}}`);
+    }
 }
 
 export default new Discovery();

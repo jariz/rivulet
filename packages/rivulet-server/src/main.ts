@@ -3,14 +3,17 @@ import dotenv from 'dotenv';
 import { error, info, warn } from './services/log';
 import chalk from 'chalk';
 import ip from 'ip';
-import Discovery from './receivers/discovery';
+import Discovery from './discovery';
 import Devices from './controllers/devices';
+import Socket from './socket';
+import { Server as HttpServer } from 'http';
 
 declare var __DEV__: boolean;
 
 export class Server {
     public app: express.Express;
     public port: number;
+    private socket: Socket;
 
     constructor () {
         dotenv.config();
@@ -32,7 +35,10 @@ export class Server {
     }
 
     private start = (): void => {
-        this.app.listen(this.port, this.onListen);
+        const http = new HttpServer(this.app);
+        this.socket = new Socket(http);
+        this.socket.bind();
+        http.listen(this.port, this.onListen);
     };
 
     private onListen = (err: Error): void => {

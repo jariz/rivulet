@@ -1,16 +1,10 @@
 import express, { NextFunction, Request, Response, Router } from 'express';
-import Discovery from '../receivers/discovery';
+import Discovery from '../discovery';
 
 const Devices: Router = express.Router();
 
 Devices.get('/devices', (req: Request, res: Response, next: NextFunction) => {
-    res.send(
-        Array.from(Discovery.discoveredDevices.entries())
-            .map(([key, val]) => ({
-                [key]: val
-            }))
-            .reduce((a, b) => Object.assign(a, b), [])
-    );
+    res.send(Array.from(Discovery.discoveredDevices.values()));
 });
 
 export default Devices;
