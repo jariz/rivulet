@@ -76,23 +76,22 @@ class Discovery extends EventEmitter {
         if (statusCode !== 200) {
             return;
         }
+
+        if (this.previouslyDiscoveredDevices.has(headers.USN)) {
+            const dev = this.previouslyDiscoveredDevices.get(headers.USN)!;
+            this.discoveredDevices.set(dev.usn, dev);
+            return;
+        }
+        
         try {
             switch (headers.ST) {
                 case MEDIA_RENDERER: {
-                    if (this.previouslyDiscoveredDevices.has(headers.USN)) {
-                        const dev = this.previouslyDiscoveredDevices.get(headers.USN)!;
-                        this.discoveredDevices.set(dev.usn, dev);
-                        return;
-                    }
                     debug('Discovered media renderer', headers.LOCATION);
                     const deviceInfo = await getDeviceInfo(headers.LOCATION);
                     this.addDevice(headers, deviceInfo, 'mediarenderer');
                     break;
                 }
                 case DIAL: {
-                    if (this.discoveredDevices.has(headers.USN)) {
-                        return;
-                    }
                     debug('Discovered DIAL device', headers.LOCATION, 'checking if it\'s a gcast...');
                     const deviceInfo = await getDeviceInfo(headers.LOCATION);
                     if (deviceInfo.modelName === 'Eureka Dongle') {

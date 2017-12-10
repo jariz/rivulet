@@ -8,41 +8,12 @@ import { sign } from 'jsonwebtoken';
 
 const Auth: Router = Router();
 
-// todo will probably be removed entirely and replaced with invitation email a là streama
-Auth.get('/register', [
-    check('username').exists().isAlphanumeric(), // todo existence
-    check('password').exists().isLength({ min: 8 })
-], async (req: Request, res: Response, next: NextFunction) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(422).json({ errors: errors.mapped() });
-    }
-
-    try {
-        const { db, config: { salt, secretKey } } = main;
-
-        const users = db.getCollection<User>('users');
-        const { username, password } = req.body;
-        const id = uuid();
-        users.insert({
-            id,
-            username,
-            password: await hash(password, salt)
-        });
-
-        return res.send({
-            token: sign({ sub: id }, secretKey)
-        });
-    } catch (ex) {
-        return next(ex);
-    }
-});
-
 const validations = [
     check('username').exists().isAlphanumeric(), // todo existence
     check('password').exists().isLength({ min: 8 })
 ];
 
+// todo will probably be removed entirely and replaced with invitation email a là streama
 Auth.get('/register', validations, async (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
