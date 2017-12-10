@@ -6,8 +6,8 @@ Radarr and sonarr will henceforth be called 'library managers'
 
 ### Basic functionality
 - [x] Env configuration (library manager urls)
-- [ ] Database setup (`lowdb`)
-- [ ] Login (`passport`)
+- [x] Database setup (`lokijs`)
+- [x] Login/Register (`passport`)
 - [ ] Timestamp updating (possibly through websocket?)
 - [ ] Episode file serving   
     Possibly made in a way that could be decoupled from rivulet-server, in case library manager is not present on current environment.

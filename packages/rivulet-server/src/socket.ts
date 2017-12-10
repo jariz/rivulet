@@ -13,6 +13,9 @@ class Socket {
         Discovery.on('device-discovered', (device: Device) => (
             this.io.emit('device-discovered', device)
         ));
+        Discovery.on('device-left', (device: Device) => (
+            this.io.emit('device-left', device)
+        ));
     }
 }
 

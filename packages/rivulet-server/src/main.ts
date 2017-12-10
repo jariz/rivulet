@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Express } from 'express';
 import dotenv from 'dotenv';
 import { error, info, warn } from './services/log';
 import chalk from 'chalk';
@@ -7,14 +7,23 @@ import Discovery from './discovery';
 import Devices from './controllers/devices';
 import Socket from './socket';
 import { Server as HttpServer } from 'http';
+import createDBClient from './factories/createDBClient';
+import createAuthHandler, { handler as authHandler } from './factories/createAuthHandler';
+import Auth from './controllers/auth';
+import loki from 'lokijs';
+import createConfig from './factories/createConfig';
+import Config from '../typings/config';
+import bodyParser from 'body-parser';
 
 dotenv.config();
 
 declare var __DEV__: boolean;
 
 export class Server {
-    public app: express.Express;
+    public app: Express;
     public port: number;
+    public db: loki;
+    public config: Config;
     private socket: Socket;
 
     constructor () {
@@ -24,10 +33,7 @@ export class Server {
             error(chalk`Your env keys are incorrect.\r\nCopy {cyan .env.default} to {cyan .env} and enter a URL and API key for {underline Sonarr} and/or {underline Radarr}`);
             process.exit(1);
         }
-        this.setRoutes();
-
-        Discovery.start();
-        this.start();
+        this.start().catch((err) => error('Unable to initialize!', err));
     }
 
     private envsOK (): boolean {
@@ -35,7 +41,16 @@ export class Server {
         return ['RADARR', 'SONARR'].some(type => notEmpty(`${type}_API_URL`) && notEmpty(`${type}_API_KEY`));
     }
 
-    private start = (): void => {
+    private async start () {
+        Discovery.start();
+        
+        this.config = await createConfig();
+        this.db = createDBClient();
+
+        this.app.use(bodyParser.json());
+        createAuthHandler();
+        this.setRoutes();
+        
         const http = new HttpServer(this.app);
         this.socket = new Socket(http);
         this.socket.bind();
@@ -59,9 +74,13 @@ export class Server {
 
     private getPort = (): number => process.env.PORT ? parseInt(process.env.PORT!, 10) : 3000;
 
-    private setRoutes = (): void => {
-        this.app.get('/devices', Devices);
+    private setRoutes () {
+        this.app.use('/auth', Auth);
+        
+        // everything else is authorized(!)
+        this.app.use(authHandler);
+        this.app.use('/devices', Devices);
     };
 }
 
-export default new Server().app;
+export default new Server();
