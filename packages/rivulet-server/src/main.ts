@@ -3,7 +3,6 @@ import dotenv from 'dotenv';
 import { error, info, warn } from './services/log';
 import chalk from 'chalk';
 import ip from 'ip';
-import Discovery from './discovery';
 import Devices from './controllers/devices';
 import Socket from './socket';
 import { Server as HttpServer } from 'http';
@@ -43,7 +42,7 @@ export class Server {
     }
 
     private async start () {
-        Discovery.start();
+        // Discovery.start();
         
         this.config = await createConfig();
         this.db = createDBClient();
@@ -51,7 +50,7 @@ export class Server {
         this.app.use(bodyParser.json());
         createAuthHandler();
         this.setRoutes();
-        
+
         const http = new HttpServer(this.app);
         this.socket = new Socket(http);
         this.socket.bind();
@@ -77,7 +76,7 @@ export class Server {
 
     private setRoutes () {
         this.app.use('/auth', Auth);
-        
+
         // everything else is authorized(!)
         this.app.use(authHandler);
         this.app.use('/devices', Devices);

@@ -7,12 +7,14 @@ import { stringify } from 'querystring';
 import { pathExists } from 'fs-extra';
 import { createReadStream } from 'fs';
 import srt2vtt from 'srt-to-vtt';
-import Transcoder from 'stream-transcoder';
-import { debug } from '../services/log';
+import { debug, error } from '../services/log';
+import ffmpeg, { FfprobeData } from 'fluent-ffmpeg';
 import chalk from 'chalk';
+import * as util from 'util';
 import { check, validationResult } from 'express-validator/check';
 
 const Library = Router();
+const probe = util.promisify<string, FfprobeData>(ffmpeg.ffprobe);
 
 Library.get('/', async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -56,6 +58,7 @@ Library.get('/serve/show/subtitle/:episodeId.vtt', async (req: Request, res: Res
         const srtPath = path.join(path.dirname(filePath), path.basename(filePath, path.extname(filePath)) + '.srt');
         debug('Looking for', srtPath);
         if (await pathExists(srtPath)) {
+            res.contentType('text/vtt');
             createReadStream(srtPath)
                 .pipe(srt2vtt())
                 .pipe(res);
@@ -68,7 +71,7 @@ Library.get('/serve/show/subtitle/:episodeId.vtt', async (req: Request, res: Res
 });
 
 Library.get('/serve/show/:episodeId/transcode/:file', [
-        check('seek').exists().matches(/[0-9]+:[0-9]+:[0-9]+/g)
+        check('seek').isInt()
     ],
     async (req: Request, res: Response, next: NextFunction) => {
         const errors = validationResult(req);
@@ -88,25 +91,26 @@ Library.get('/serve/show/:episodeId/transcode/:file', [
                 return;
             }
 
-            let trans = new Transcoder(createReadStream(body.path))
-                .videoCodec('h264')
+            res.contentType('webm');
+            let transcoder = ffmpeg(createReadStream(body.path))
+                .videoCodec('libx264')
                 .format('mp4')
-                .custom('strict', 'experimental')
+                .outputOptions('-movflags frag_keyframe+empty_moov')
+                .on('start', (commandLine) => {
+                    debug('Started transcoding.', chalk`{dim ${commandLine}}`);
+                })
                 .on('error', (err: Error) => {
                     next(err);
                 })
-                .on('finish', () => {
-                    next();
+                .on('stderr', (stdErrLine: string) => {
+                    error(chalk`{bgCyan.black  ffmpeg } ${stdErrLine}`);
                 });
 
-            if (req.params.seek) {
-                trans = trans.custom('ss', req.params.seek);
+            if (req.query.seek) {
+                transcoder = transcoder.seekInput(req.query.seek);
             }
 
-            const args = trans._compileArguments();
-            debug('Transcoding...', chalk`{dim ffmpeg -i "${body.path}" ${args.join(' ')} out.mp4}`);
-
-            trans.stream().pipe(res);
+            transcoder.stream(res, { end: true });
         } catch (ex) {
             next(ex);
         }
@@ -130,10 +134,16 @@ Library.get('/serve/show/:episodeId', async (req: Request, res: Response, next: 
     try {
         const body = await fetchJSON(episodeFileUrl(req.params.episodeId));
         const query = Object.keys(req.query).length ? '?' + stringify(req.query) : '';
+        ///////// jari dev only //////////
+        body.path = '/Volumes/hdd/' + body.path.substring(9);
+        //////////////////////////////////
+
+        const { format: { duration } } = await probe(body.path);
 
         res.send({
             fileUrl: `/library/serve/show/${req.params.episodeId}/${path.basename(body.path)}${query}`,
-            transcodeUrl: `/library/serve/show/${req.params.episodeId}/transcode/${path.basename(body.path, path.extname(body.path))}.mp4${query}`
+            transcodeUrl: `/library/serve/show/${req.params.episodeId}/transcode/${path.basename(body.path, path.extname(body.path))}.mp4${query}`,
+            duration
         });
     } catch (ex) {
         next(ex);
