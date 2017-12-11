@@ -1,0 +1,1 @@
+export default (_var: string) => _var in process.env && process.env[_var] !== '';

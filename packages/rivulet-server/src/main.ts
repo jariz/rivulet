@@ -14,6 +14,8 @@ import loki from 'lokijs';
 import createConfig from './factories/createConfig';
 import Config from '../typings/config';
 import bodyParser from 'body-parser';
+import validVar from './global/validVar';
+import Library from './controllers/library';
 
 dotenv.config();
 
@@ -37,8 +39,7 @@ export class Server {
     }
 
     private envsOK (): boolean {
-        const notEmpty = (_var: string) => _var in process.env && process.env[_var] !== '';
-        return ['RADARR', 'SONARR'].some(type => notEmpty(`${type}_API_URL`) && notEmpty(`${type}_API_KEY`));
+        return ['RADARR', 'SONARR'].some(type => validVar(`${type}_API_URL`) && validVar(`${type}_API_KEY`));
     }
 
     private async start () {
@@ -80,6 +81,7 @@ export class Server {
         // everything else is authorized(!)
         this.app.use(authHandler);
         this.app.use('/devices', Devices);
+        this.app.use('/library', Library);
     };
 }
 

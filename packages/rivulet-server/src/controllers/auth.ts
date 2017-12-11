@@ -9,7 +9,7 @@ import { sign } from 'jsonwebtoken';
 const Auth: Router = Router();
 
 const validations = [
-    check('username').exists().isAlphanumeric(), // todo existence
+    check('username').exists().isAlphanumeric(), // todo existence in db
     check('password').exists().isLength({ min: 8 })
 ];
 
@@ -32,7 +32,7 @@ Auth.get('/register', validations, async (req: Request, res: Response, next: Nex
             password: await hash(password, salt)
         });
 
-        return res.send({
+        return res.json({
             token: sign({ sub: id }, secretKey)
         });
     } catch (ex) {
@@ -52,7 +52,7 @@ Auth.get('/login', validations, async (req: Request, res: Response, next: NextFu
         const users = db.getCollection<User>('users');
         const { username, password } = req.body;
         const user = users.findOne({
-            username,
+            username
         });
         
         if (!user) {
@@ -63,7 +63,7 @@ Auth.get('/login', validations, async (req: Request, res: Response, next: NextFu
             throw new Error('Incorrect password');
         }
 
-        return res.send({
+        return res.json({
             token: sign({ sub: user.id }, secretKey)
         });
     } catch (ex) {

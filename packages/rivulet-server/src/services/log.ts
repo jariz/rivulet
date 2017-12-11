@@ -1,4 +1,5 @@
 import chalk from 'chalk';
+import { get } from 'stack-trace';
 
 type LogType = 'log' | 'error' | 'warn' | 'debug'
 
@@ -17,9 +18,12 @@ const log = (type: LogType = 'log', message: any, ...misc: any[]) => {
         case 'warn':
             content = [chalk`{bold.yellow WARN}`];
             break;
-        case 'debug':
-            content = [chalk`{bold.magenta VERB}`];
+        case 'debug': {
+            const trace = get();
+            const funcName = trace[2].getFunctionName();
+            content = [chalk`{bold.magenta VERB} ${funcName ? chalk`{bgBlack.white  ${funcName.substr(0, 15)} }` : ''}`];
             break;
+        }
         default:
             throw new Error(`Invalid log type: ${type}`);
     }
