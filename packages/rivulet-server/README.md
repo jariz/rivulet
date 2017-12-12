@@ -1,5 +1,6 @@
-## Rivulet
-Server!
+![](https://jari.lol/F0fKK2wPgs.svg)
+
+WIP
 
 ## TODO
 Radarr and sonarr will henceforth be called 'library managers'
