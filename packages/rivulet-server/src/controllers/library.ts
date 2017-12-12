@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import fetchJSON from '../services/fetchJSON';
 import { episodeFileUrl, moviesUrl, radarrAvailable, seriesUrl, sonarrAvailable } from '../global/apiUrls';
-import { Movie, Show } from '../../typings/media';
+import { EpisodeFile, Movie, Show } from '../../typings/media';
 import path from 'path';
 import { stringify } from 'querystring';
 import { pathExists } from 'fs-extra';
@@ -49,7 +49,7 @@ Library.get('/player/:episodeId', (req: Request, res: Response, next: NextFuncti
 
 Library.get('/serve/show/subtitle/:episodeId.vtt', async (req: Request, res: Response, next: NextFunction) => {
     try {
-        let { path: filePath } = await fetchJSON(episodeFileUrl(req.params.episodeId));
+        let { path: filePath }: EpisodeFile = await fetchJSON(episodeFileUrl(req.params.episodeId));
 
         ///////// jari dev only //////////
         filePath = '/Volumes/hdd/' + filePath.substring(9);
@@ -80,7 +80,7 @@ Library.get('/serve/show/:episodeId/transcode/:file', [
             return;
         }
         try {
-            const body = await fetchJSON(episodeFileUrl(req.params.episodeId));
+            const body: EpisodeFile = await fetchJSON(episodeFileUrl(req.params.episodeId));
 
             ///////// jari dev only //////////
             body.path = '/Volumes/hdd/' + body.path.substring(9);
@@ -91,7 +91,7 @@ Library.get('/serve/show/:episodeId/transcode/:file', [
                 return;
             }
 
-            res.contentType('webm');
+            res.contentType('mp4');
             let transcoder = ffmpeg(createReadStream(body.path))
                 .videoCodec('libx264')
                 .format('mp4')
@@ -118,7 +118,7 @@ Library.get('/serve/show/:episodeId/transcode/:file', [
 
 Library.get('/serve/show/:episodeId/:file', async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const body = await fetchJSON(episodeFileUrl(req.params.episodeId));
+        const body: EpisodeFile = await fetchJSON(episodeFileUrl(req.params.episodeId));
 
         ///////// jari dev only //////////
         body.path = '/Volumes/hdd/' + body.path.substring(9);
@@ -132,7 +132,7 @@ Library.get('/serve/show/:episodeId/:file', async (req: Request, res: Response, 
 
 Library.get('/serve/show/:episodeId', async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const body = await fetchJSON(episodeFileUrl(req.params.episodeId));
+        const body: EpisodeFile = await fetchJSON(episodeFileUrl(req.params.episodeId));
         const query = Object.keys(req.query).length ? '?' + stringify(req.query) : '';
         ///////// jari dev only //////////
         body.path = '/Volumes/hdd/' + body.path.substring(9);

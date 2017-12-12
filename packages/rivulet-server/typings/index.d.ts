@@ -39,7 +39,17 @@ declare module 'srt-to-vtt' {
     export = ____srt2vtt
 } 
 
-declare module 'stream-transcoder' {
-    const st: any
-    export = st
+declare module 'castv2-client' {
+    import { EventEmitter } from 'events';
+    export type App = any;
+    export const DefaultMediaReceiver: App;
+    export type LoadOpts = { autoplay?: boolean };
+    export class Player extends EventEmitter {
+        load(media: any, opts: LoadOpts, cb: (err: Error, status: any) => void): void;
+    }
+    export class Client extends EventEmitter {
+        connect(host: string, cb: () => void): void;
+        launch(app: App, callback: (err: Error, player: Player) => void): void;
+        close(): void;
+    }
 }
