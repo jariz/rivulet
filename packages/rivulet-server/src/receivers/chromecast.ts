@@ -1,10 +1,11 @@
-import { Receiver } from './Receiver';
-import { DefaultMediaReceiver, Client, Player } from 'castv2-client';
-import { error } from '../services/log';
+import {Receiver} from './Receiver';
+import {Client, DefaultMediaReceiver, Player} from 'castv2-client';
+import {error} from '../services/log';
 
 export class Chromecast extends Receiver {
     client: Client;
-    play () {
+
+    init() {
         this.client = new Client();
         this.client.connect(this.device.location, () => {
             this.client.launch(DefaultMediaReceiver, (err: Error, player: Player) => {
@@ -20,16 +21,16 @@ export class Chromecast extends Receiver {
                         metadataType: 0,
                         title: 'Big Buck Bunny',
                         images: [
-                            { url: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg' }
+                            {url: 'http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg'}
                         ]
                     }
                 };
-                
+
                 // todo LOAD VTT HERE!!!!
 
                 // todo promisify fucking everything
-                player.load(media, { autoplay: true}, (err: Error, status: any) => {
-                    
+                player.load(media, {autoplay: true}, (err: Error, status: any) => {
+
                 });
             })
         })
