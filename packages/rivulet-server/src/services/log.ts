@@ -1,5 +1,4 @@
 import chalk from 'chalk';
-import { get } from 'stack-trace';
 
 type LogType = 'log' | 'error' | 'warn' | 'debug'
 
@@ -19,9 +18,7 @@ const log = (type: LogType = 'log', message: any, ...misc: any[]) => {
             content = [chalk`{bold.yellow WARN}`];
             break;
         case 'debug': {
-            const trace = get();
-            const funcName = trace[2].getFunctionName();
-            content = [chalk`{bold.magenta VERB} ${funcName ? chalk`{bgBlack.white  ${funcName.substr(0, 15)} }` : ''}`];
+            content = [chalk`{bold.magenta VERB}`];
             break;
         }
         default:

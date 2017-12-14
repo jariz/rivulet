@@ -5,6 +5,7 @@ import { check, validationResult } from 'express-validator/check';
 import { hash, compare } from 'bcrypt';
 import uuid from 'uuid/v4';
 import { sign } from 'jsonwebtoken';
+import { Controllers, loginUrl, registerUrl, relative } from '../global/urls';
 
 const Auth: Router = Router();
 
@@ -14,7 +15,7 @@ const validations = [
 ];
 
 // todo will probably be removed entirely and replaced with invitation email a là streama
-Auth.get('/register', validations, async (req: Request, res: Response, next: NextFunction) => {
+Auth.get(relative(registerUrl(), Controllers.Auth), validations, async (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(422).json({ errors: errors.mapped() });
@@ -40,7 +41,7 @@ Auth.get('/register', validations, async (req: Request, res: Response, next: Nex
     }
 });
 
-Auth.get('/login', validations, async (req: Request, res: Response, next: NextFunction) => {
+Auth.get(relative(loginUrl(), Controllers.Auth), validations, async (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(422).json({ errors: errors.mapped() });
