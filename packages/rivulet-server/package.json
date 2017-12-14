@@ -34,7 +34,6 @@
     "passport-jwt": "^3.0.1",
     "socket.io": "^2.0.4",
     "srt-to-vtt": "^1.1.1",
-    "stack-trace": "0.0.10",
     "stream-transcoder": "0.0.5",
     "uuid": "^3.1.0",
     "xml-js": "^1.5.2"

@@ -15,6 +15,8 @@ import Config from '../typings/config';
 import bodyParser from 'body-parser';
 import validVar from './global/validVar';
 import Library from './controllers/library';
+import Discovery from './discovery';
+import { Controllers } from './global/urls';
 
 dotenv.config();
 
@@ -27,6 +29,8 @@ export class Server {
     public config: Config;
     private socket: Socket;
 
+    public getPort = (): number => process.env.PORT ? parseInt(process.env.PORT!, 10) : 3000;
+    
     constructor () {
         this.app = express();
         this.port = this.getPort();
@@ -42,7 +46,7 @@ export class Server {
     }
 
     private async start () {
-        // Discovery.start();
+        Discovery.start();
         
         this.config = await createConfig();
         this.db = createDBClient();
@@ -72,15 +76,13 @@ export class Server {
         info(chalk`Local:               {underline http://${ip.address('private')}:{bold ${this.port.toString()}}/}`);
     };
 
-    private getPort = (): number => process.env.PORT ? parseInt(process.env.PORT!, 10) : 3000;
-
     private setRoutes () {
-        this.app.use('/auth', Auth);
+        this.app.use(Controllers.Auth, Auth);
 
         // everything else is authorized(!)
         this.app.use(authHandler);
-        this.app.use('/devices', Devices);
-        this.app.use('/library', Library);
+        this.app.use(Controllers.Devices, Devices);
+        this.app.use(Controllers.Library, Library);
     };
 }
 

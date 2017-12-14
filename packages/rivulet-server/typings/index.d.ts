@@ -1,6 +1,5 @@
 // none of these are fully typed. add more if need be.
 
-import WritableStream = NodeJS.WritableStream;
 import ReadWriteStream = NodeJS.ReadWriteStream;
 
 type Name = string | 'public' | 'private'
@@ -34,22 +33,53 @@ declare module 'stack-trace' {
     export function get (): CallSite[];
 }
 
-declare const ____srt2vtt: () => ReadWriteStream
+declare const ____srt2vtt: () => ReadWriteStream;
 declare module 'srt-to-vtt' {
     export = ____srt2vtt
-} 
+}
 
 declare module 'castv2-client' {
     import { EventEmitter } from 'events';
-    export type App = any;
+    export type App = any; // todo type
+    export type Status = {
+        activeTrackIds: number[],
+        
+    };
+    export interface QueueItem {
+        
+    }
+    export interface Media {
+        contentId: string,
+        contentType: string,
+        duration?: number,
+        metadata: number,
+    }
+
     export const DefaultMediaReceiver: App;
     export type LoadOpts = { autoplay?: boolean };
-    export class Player extends EventEmitter {
-        load(media: any, opts: LoadOpts, cb: (err: Error, status: any) => void): void;
+    export interface QueueOpts {
+        startIndex?: number,
+        currentTime?: number,
+        repeatMode?: 'REPEAT_OFF' | 'REPEAT_ALL' | 'REPEAT_SINGLE' | 'REPEAT_ALL_AND_SHUFFLE' 
     }
+    export type QueueUpdateOpts = QueueOpts & {
+        jump?: number,
+        currentItemId?: number
+    };
+
+    export class Player extends EventEmitter {
+        load (media: any, opts: LoadOpts, cb: (err: Error, status: Status) => void): void;
+
+        queueLoad (queue: QueueItem[], opts: QueueOpts, cb: (err: Error, status: Status) => void): void;
+
+        queueUpdate (queue: QueueItem[], opts: QueueUpdateOpts, cb: (err: Error, status: Status) => void): void;
+    }
+
     export class Client extends EventEmitter {
-        connect(host: string, cb: () => void): void;
-        launch(app: App, callback: (err: Error, player: Player) => void): void;
-        close(): void;
+        connect (host: string, cb: () => void): void;
+
+        launch (app: App, callback: (err: Error, player: Player) => void): void;
+
+        close (): void;
     }
 }

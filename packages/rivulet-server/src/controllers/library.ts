@@ -3,7 +3,7 @@ import fetchJSON from '../services/fetchJSON';
 import { episodeFileUrl, moviesUrl, radarrAvailable, seriesUrl, sonarrAvailable } from '../global/apiUrls';
 import { EpisodeFile, Movie, Show } from '../../typings/media';
 import path from 'path';
-import { stringify } from 'querystring';
+import { default as querystring, stringify } from 'querystring';
 import { pathExists } from 'fs-extra';
 import { createReadStream } from 'fs';
 import srt2vtt from 'srt-to-vtt';
@@ -12,6 +12,16 @@ import ffmpeg, { FfprobeData } from 'fluent-ffmpeg';
 import chalk from 'chalk';
 import * as util from 'util';
 import { check, validationResult } from 'express-validator/check';
+import {
+    Controllers,
+    relative,
+    serveFileUrl,
+    serveSubtitleUrl,
+    serveTranscodedFileUrl,
+    serveUrl
+} from '../global/urls';
+import { sign } from 'jsonwebtoken';
+import main from '../main';
 
 const Library = Router();
 const probe = util.promisify<string, FfprobeData>(ffmpeg.ffprobe);
@@ -34,22 +44,28 @@ Library.get('/', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // will be removed once FE is in place
-Library.get('/player/:episodeId', (req: Request, res: Response, next: NextFunction) => {
+Library.get('/player/:episodeFileId', (req: Request, res: Response, next: NextFunction) => {
+    const { config: { secretKey } } = main;
+    const auth = sign({ sub: req.user.id }, secretKey);
+    const videoUrl = (
+        !req.query.noTranscodeserve ? serveTranscodedFileUrl(req.params.episodeFileId, 'x.mp4')
+            : serveFileUrl(req.params.episodeFileId, req.params.episodeFileId)
+    ) + `?${querystring.stringify({ auth })}`;
     res.send(`
     <html>
     <head></head>
     <body style="margin: 0;">
-        <video width="100%" autoplay height="100%" controls src="http://${req.hostname}:3000/library/serve/show/${req.params.episodeId}${!req.query.noTranscode ? '/transcode/x.mp4' : ''}?auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3MTIyZjI4Yy1iYWNkLTRkMWUtYWYyMy04ZDBmOTg0NWJmYmUiLCJpYXQiOjE1MTI5NDU2MjR9.3bSSHy-EqFcAngTWghu-Dtei_yf2iw3VYVtbc4N7ijE">
-            <track default src="http://${req.hostname}:3000/library/serve/show/subtitle/${req.params.episodeId}.vtt?auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3MTIyZjI4Yy1iYWNkLTRkMWUtYWYyMy04ZDBmOTg0NWJmYmUiLCJpYXQiOjE1MTI5NDU2MjR9.3bSSHy-EqFcAngTWghu-Dtei_yf2iw3VYVtbc4N7ijE" kind="subtitles" />        
+        <video width="100%" autoplay height="100%" controls src="${videoUrl}">
+            <track default src="${serveSubtitleUrl(req.params.episodeFileId, 'subs.vtt')}" kind="subtitles" />        
         </video>
     </body>
     </html>
     `);
 });
 
-Library.get('/serve/show/subtitle/:episodeId.vtt', async (req: Request, res: Response, next: NextFunction) => {
+Library.get('/serve/show/subtitle/:episodeFileId.vtt', async (req: Request, res: Response, next: NextFunction) => {
     try {
-        let { path: filePath }: EpisodeFile = await fetchJSON(episodeFileUrl(req.params.episodeId));
+        let { path: filePath }: EpisodeFile = await fetchJSON(episodeFileUrl(req.params.episodeFileId));
 
         ///////// jari dev only //////////
         filePath = '/Volumes/hdd/' + filePath.substring(9);
@@ -70,8 +86,8 @@ Library.get('/serve/show/subtitle/:episodeId.vtt', async (req: Request, res: Res
     }
 });
 
-Library.get('/serve/show/:episodeId/transcode/:file', [
-        check('seek').isInt()
+Library.get(relative(serveTranscodedFileUrl(':episodeFileId', ':file'), Controllers.Library), [
+        check('seek').optional().isInt()
     ],
     async (req: Request, res: Response, next: NextFunction) => {
         const errors = validationResult(req);
@@ -80,7 +96,7 @@ Library.get('/serve/show/:episodeId/transcode/:file', [
             return;
         }
         try {
-            const body: EpisodeFile = await fetchJSON(episodeFileUrl(req.params.episodeId));
+            const body: EpisodeFile = await fetchJSON(episodeFileUrl(req.params.episodeFileId));
 
             ///////// jari dev only //////////
             body.path = '/Volumes/hdd/' + body.path.substring(9);
@@ -95,6 +111,7 @@ Library.get('/serve/show/:episodeId/transcode/:file', [
             let transcoder = ffmpeg(createReadStream(body.path))
                 .videoCodec('libx264')
                 .format('mp4')
+                .outputOptions('-preset ultrafast')
                 .outputOptions('-movflags frag_keyframe+empty_moov')
                 .on('start', (commandLine) => {
                     debug('Started transcoding.', chalk`{dim ${commandLine}}`);
@@ -116,23 +133,24 @@ Library.get('/serve/show/:episodeId/transcode/:file', [
         }
     });
 
-Library.get('/serve/show/:episodeId/:file', async (req: Request, res: Response, next: NextFunction) => {
+Library.get(relative(serveFileUrl(':episodeFileId', ':file'), Controllers.Library),
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const body: EpisodeFile = await fetchJSON(episodeFileUrl(req.params.episodeFileId));
+
+            ///////// jari dev only //////////
+            body.path = '/Volumes/hdd/' + body.path.substring(9);
+            //////////////////////////////////
+
+            res.sendFile(body.path);
+        } catch (ex) {
+            next(ex);
+        }
+    });
+
+Library.get(relative(serveUrl(':episodeFileId'), Controllers.Library), async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const body: EpisodeFile = await fetchJSON(episodeFileUrl(req.params.episodeId));
-
-        ///////// jari dev only //////////
-        body.path = '/Volumes/hdd/' + body.path.substring(9);
-        //////////////////////////////////
-
-        res.sendFile(body.path);
-    } catch (ex) {
-        next(ex);
-    }
-});
-
-Library.get('/serve/show/:episodeId', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const body: EpisodeFile = await fetchJSON(episodeFileUrl(req.params.episodeId));
+        const body: EpisodeFile = await fetchJSON(episodeFileUrl(req.params.episodeFileId));
         const query = Object.keys(req.query).length ? '?' + stringify(req.query) : '';
         ///////// jari dev only //////////
         body.path = '/Volumes/hdd/' + body.path.substring(9);
@@ -141,8 +159,8 @@ Library.get('/serve/show/:episodeId', async (req: Request, res: Response, next: 
         const { format: { duration } } = await probe(body.path);
 
         res.send({
-            fileUrl: `/library/serve/show/${req.params.episodeId}/${path.basename(body.path)}${query}`,
-            transcodeUrl: `/library/serve/show/${req.params.episodeId}/transcode/${path.basename(body.path, path.extname(body.path))}.mp4${query}`,
+            fileUrl: serveFileUrl(req.params.episodeFileId, path.basename(body.path)) + query,
+            transcodeUrl: serveTranscodedFileUrl(req.params.episodeFileId, `${path.basename(body.path, path.extname(body.path))}.mp4`) + query,
             duration
         });
     } catch (ex) {
