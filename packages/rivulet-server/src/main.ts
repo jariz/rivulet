@@ -6,17 +6,13 @@ import ip from 'ip';
 import Devices from './controllers/devices';
 import Socket from './socket';
 import { Server as HttpServer } from 'http';
-import createDBClient from './factories/createDBClient';
 import createAuthHandler, { handler as authHandler } from './factories/createAuthHandler';
 import Auth from './controllers/auth';
-import loki from 'lokijs';
-import createConfig from './factories/createConfig';
-import Config from '../typings/config';
 import bodyParser from 'body-parser';
-import validVar from './global/validVar';
+import validVar from './constants/validVar';
 import Library from './controllers/library';
 import Discovery from './discovery';
-import { Controllers } from './global/urls';
+import { Controllers } from './constants/urls';
 
 dotenv.config();
 
@@ -25,12 +21,10 @@ declare var __DEV__: boolean;
 export class Server {
     public app: Express;
     public port: number;
-    public db: loki;
-    public config: Config;
     private socket: Socket;
 
     public getPort = (): number => process.env.PORT ? parseInt(process.env.PORT!, 10) : 3000;
-    
+
     constructor () {
         this.app = express();
         this.port = this.getPort();
@@ -38,18 +32,12 @@ export class Server {
             error(chalk`Your env keys are incorrect.\r\nCopy {cyan .env.default} to {cyan .env} and enter a URL and API key for {underline Sonarr} and/or {underline Radarr}`);
             process.exit(1);
         }
-        this.start().catch((err) => error('Unable to initialize!', err));
+
+        this.start();
     }
 
-    private envsOK (): boolean {
-        return ['RADARR', 'SONARR'].some(type => validVar(`${type}_API_URL`) && validVar(`${type}_API_KEY`));
-    }
-
-    private async start () {
+    public start () {
         Discovery.start();
-        
-        this.config = await createConfig();
-        this.db = createDBClient();
 
         this.app.use(bodyParser.json());
         createAuthHandler();
@@ -60,6 +48,10 @@ export class Server {
         this.socket.bind();
         http.listen(this.port, this.onListen);
     };
+
+    private envsOK (): boolean {
+        return ['RADARR', 'SONARR'].some(type => validVar(`${type}_API_URL`) && validVar(`${type}_API_KEY`));
+    }
 
     private onListen = (err: Error): void => {
         if (err) {

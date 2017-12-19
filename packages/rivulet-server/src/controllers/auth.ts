@@ -1,11 +1,12 @@
 import { NextFunction, Request, Response, Router } from 'express';
-import main from '../main';
 import { User } from '../../typings/models/user';
 import { check, validationResult } from 'express-validator/check';
-import { hash, compare } from 'bcrypt';
+import { compare, hash } from 'bcrypt';
 import uuid from 'uuid/v4';
 import { sign } from 'jsonwebtoken';
-import { Controllers, loginUrl, registerUrl, relative } from '../global/urls';
+import { Controllers, loginUrl, registerUrl, relative } from '../constants/urls';
+import db from '../sources/db';
+import config from '../sources/config';
 
 const Auth: Router = Router();
 
@@ -22,7 +23,7 @@ Auth.get(relative(registerUrl(), Controllers.Auth), validations, async (req: Req
     }
 
     try {
-        const { db, config: { salt, secretKey } } = main;
+        const { salt, secretKey } = config;
 
         const users = db.getCollection<User>('users');
         const { username, password } = req.body;
@@ -48,7 +49,7 @@ Auth.get(relative(loginUrl(), Controllers.Auth), validations, async (req: Reques
     }
 
     try {
-        const { db, config: { secretKey } } = main;
+        const { secretKey } = config;
 
         const users = db.getCollection<User>('users');
         const { username, password } = req.body;

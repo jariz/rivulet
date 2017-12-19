@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import fetchJSON from '../services/fetchJSON';
-import { episodeFileUrl, moviesUrl, radarrAvailable, seriesUrl, sonarrAvailable } from '../global/apiUrls';
+import { episodeFileUrl, moviesUrl, radarrAvailable, seriesUrl, sonarrAvailable } from '../constants/apiUrls';
 import { EpisodeFile, Movie, Show } from '../../typings/media';
 import path from 'path';
 import { default as querystring, stringify } from 'querystring';
@@ -19,9 +19,9 @@ import {
     serveSubtitleUrl,
     serveTranscodedFileUrl,
     serveUrl
-} from '../global/urls';
+} from '../constants/urls';
 import { sign } from 'jsonwebtoken';
-import main from '../main';
+import config from '../sources/config';
 
 const Library = Router();
 const probe = util.promisify<string, FfprobeData>(ffmpeg.ffprobe);
@@ -45,7 +45,7 @@ Library.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
 // will be removed once FE is in place
 Library.get('/player/:episodeFileId', (req: Request, res: Response, next: NextFunction) => {
-    const { config: { secretKey } } = main;
+    const { secretKey } = config;
     const auth = sign({ sub: req.user.id }, secretKey);
     const videoUrl = (
         !req.query.noTranscodeserve ? serveTranscodedFileUrl(req.params.episodeFileId, 'x.mp4')
@@ -110,6 +110,7 @@ Library.get(relative(serveTranscodedFileUrl(':episodeFileId', ':file'), Controll
             res.contentType('mp4');
             let transcoder = ffmpeg(createReadStream(body.path))
                 .videoCodec('libx264')
+                .audioChannels(2)
                 .format('mp4')
                 .outputOptions('-preset ultrafast')
                 .outputOptions('-movflags frag_keyframe+empty_moov')
