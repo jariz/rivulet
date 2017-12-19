@@ -6,6 +6,11 @@ const log = (type: LogType = 'log', message: any, ...misc: any[]) => {
     if (type === 'debug' && process.env.DEBUG !== 'true') {
         return;
     }
+    if (process.env.NODE_ENV === 'test' && type !== 'error') {
+        // we do not care for pretty much any logging whilst testing
+        return;
+    }
+    
     let content = [];
     switch (type) {
         case 'log':

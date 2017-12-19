@@ -1,11 +1,11 @@
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import passport from 'passport';
-import main from '../main';
 import { User } from '../../typings/models/user';
 import { debug } from '../services/log';
+import db from '../sources/db';
+import config from '../sources/config';
 
 export default () => {
-    const { db, config } = main;
     if (!db.getCollection<User>('users')) {
         db.addCollection<User>('users');
     }

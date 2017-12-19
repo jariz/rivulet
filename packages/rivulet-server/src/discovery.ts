@@ -4,7 +4,8 @@ import fetch from 'node-fetch';
 import xml, { Element } from 'xml-js';
 import chalk from 'chalk';
 import { EventEmitter } from 'events';
-import { DIAL, MEDIA_RENDERER } from './global/serviceTypes';
+import { DIAL, MEDIA_RENDERER } from './constants/serviceTypes';
+import Timer = NodeJS.Timer;
 
 type DeviceType = 'chromecast' | 'mediarenderer';
 export type Device = {
@@ -47,16 +48,22 @@ class Discovery extends EventEmitter {
     discoveredDevices: DeviceMap = new Map();
     private previouslyDiscoveredDevices: DeviceMap = new Map();
     private client: Client;
+    private timer: Timer;
 
     start () {
         this.client = new Client({
             customLogger: (...args: any[]) => debug(chalk`{black {bgRed  SSDP }}`, ...args)
         });
 
-        setInterval(() => this.search(), 1000 * 60);
+        this.timer = setInterval(() => this.search(), 1000 * 60);
         this.search();
         this.client.on('response', this.onFound);
     }
+    
+    stop () {
+        clearInterval(this.timer);
+        this.client.stop();
+    } 
 
     search () {
         debug('Initiating SSDP discovery...');

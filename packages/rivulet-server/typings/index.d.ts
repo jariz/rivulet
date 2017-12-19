@@ -21,6 +21,7 @@ declare module 'node-ssdp' {
         constructor (opts?: SsdpOpts);
 
         search (serviceType: string): string;
+        stop (): void;
     }
 }
 
@@ -41,26 +42,87 @@ declare module 'srt-to-vtt' {
 declare module 'castv2-client' {
     import { EventEmitter } from 'events';
     export type App = any; // todo type
+    export type RepeatMode = 'REPEAT_OFF' | 'REPEAT_ALL' | 'REPEAT_SINGLE' | 'REPEAT_ALL_AND_SHUFFLE';
+    
+    // https://developers.google.com/cast/docs/reference/receiver/cast.receiver.media.MediaStatus
     export type Status = {
-        activeTrackIds: number[],
-        
+        activeTrackIds?: number[],
+        currentItemId?: number;
+        currentTime: number;
+        idleReason: 'CANCELLED' | 'INTERRUPTED' | 'FINISHED' | 'ERROR' | undefined;
+        items?: QueueItem[];
+        loadingItemId?: number
+        media?: Media;
+        mediaSessionId: number;
+        playbackRate: number;
+        playerState: 'IDLE' | 'PLAYING' | 'PAUSED' | 'BUFFERING';
+        preloadedItemId?: number;
+        queueData?: QueueOpts;
+        repeatMode: RepeatMode;
+        supportedMediaCommands: number;
+        type: string;
+        videoInfo: VideoInfo;
+        volume: number;
     };
+    
+    // https://developers.google.com/cast/docs/reference/receiver/cast.receiver.media.VideoInformation.html
+    export interface VideoInfo {
+        hdrType?: 'SDR' | 'HDR' | 'DV';
+        width: number;
+        height: number;
+    }
+    
+    // https://developers.google.com/cast/docs/reference/receiver/cast.receiver.media.QueueItem
     export interface QueueItem {
+        activeTrackIds?: number[];
+        autoplay?: boolean;
+        customData?: any;
+        itemId?: number;
+        media?: Media;
+        playbackDuration?: number;
+        preloadTime?: number;
+        startTime?: number;
+    }
+    
+    // https://developers.google.com/cast/docs/reference/caf_receiver/cast.framework.messages.MediaInformation
+    export interface Media {
+        contentId: string;
+        contentType: string;
+        duration?: number;
+        metadata: GenericMetadata;
+        customData?: any;
+        entity?: string;
         
     }
-    export interface Media {
-        contentId: string,
-        contentType: string,
-        duration?: number,
-        metadata: number,
+    
+    // https://developers.google.com/cast/docs/reference/receiver/cast.receiver.media#.MetadataType
+    export enum MetadataType {
+        GENERIC = 0,
+        MOVIE = 1,
+        TV_SHOW = 2,
+        MUSIC_TRACK = 3,
+        PHOTO = 4
+    } 
+    
+    // https://developers.google.com/cast/docs/reference/caf_receiver/cast.framework.messages.MediaMetadata
+    export interface Metadata {
+        type: MetadataType
+    }
+    
+    export interface GenericMetadata extends Metadata {
+        type: MetadataType.GENERIC;
+        releaseDate?: string;
+        subtitle?: string;
+        title?: string;
     }
 
     export const DefaultMediaReceiver: App;
     export type LoadOpts = { autoplay?: boolean };
     export interface QueueOpts {
         startIndex?: number,
+        startTime?: number,
         currentTime?: number,
-        repeatMode?: 'REPEAT_OFF' | 'REPEAT_ALL' | 'REPEAT_SINGLE' | 'REPEAT_ALL_AND_SHUFFLE' 
+        repeatMode?: RepeatMode;
     }
     export type QueueUpdateOpts = QueueOpts & {
         jump?: number,
