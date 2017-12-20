@@ -21,15 +21,16 @@ import { base, serveTranscodedFileUrl } from '../constants/urls';
 import path from 'path';
 import { sign } from 'jsonwebtoken';
 import config from '../sources/config';
+import { User } from '../../typings/models/user';
 
 export default class Chromecast extends Receiver {
     client: Client;
     host: string;
-
-    set device (value: Device) {
-        const { hostname } = new URL(this.device.location);
+    
+    constructor (device: Device, episode: Episode, owner: User) {
+        super(device, episode, owner);
+        const { hostname } = new URL(device.location);
         this.host = hostname;
-        this._device = value;
     }
 
     connect (): Promise<Status> {

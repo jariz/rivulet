@@ -1,11 +1,9 @@
-import Chromecast from './src/receivers/chromecast';
-import Discovery, { Device } from './src/discovery';
-import { fakeEpisode } from './src/constants/mock';
-import { User } from './typings/models/user';
+import Discovery, { Device } from '../discovery';
+import { User } from '../../typings/models/user';
 import uuid from 'uuid/v4';
-import db from './src/sources/db';
-
-require('./src/main');
+import db from '../sources/db';
+import { fakeEpisode } from '../constants/mock';
+import Chromecast from './chromecast';
 
 const findDevice: Promise<Device> = new Promise((resolve, reject) => {
     const deviceFound = (currentDevice: Device) => {
@@ -41,8 +39,10 @@ it('Discovers a device', async () => {
 });
 
 it('Connects to the device', async () => {
-    expect.assertions(1);
-    return new Chromecast(device, fakeEpisode, user);
+    // expect.assertions(1);
+    const cast = new Chromecast(device, fakeEpisode, user);
+    await cast.connect();
+
 });
 
 it('Cleans up the account again', async () => {

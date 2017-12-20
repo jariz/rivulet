@@ -11,32 +11,8 @@ export interface Status {
 }
 
 export abstract class Receiver extends EventEmitter {
-    constructor (protected _device: Device, protected _episode: Episode, protected _owner: User) {
+    constructor (protected device: Device, protected episode: Episode, protected owner: User) {
         super();
-    }
-
-    get device () {
-        return this._device;
-    }
-
-    set device (value: Device) {
-        this._device = value;
-    }
-
-    get owner () {
-        return this._owner;
-    }
-
-    set owner (value: User) {
-        this._owner = value;
-    }
-
-    get episode () {
-        return this._episode;
-    }
-
-    set episode (value: Episode) {
-        this._episode = value;
     }
     
     abstract connect (): Promise<Status>;
