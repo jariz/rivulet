@@ -6,10 +6,6 @@ import db from '../sources/db';
 import config from '../sources/config';
 
 export default () => {
-    if (!db.getCollection<User>('users')) {
-        db.addCollection<User>('users');
-    }
-
     passport.use(
         new Strategy({
                 jwtFromRequest: ExtractJwt.fromExtractors([

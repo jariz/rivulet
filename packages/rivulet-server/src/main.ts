@@ -13,6 +13,7 @@ import validVar from './constants/validVar';
 import Library from './controllers/library';
 import Discovery from './discovery';
 import { Controllers } from './constants/urls';
+import port from './constants/port';
 
 dotenv.config();
 
@@ -20,14 +21,10 @@ declare var __DEV__: boolean;
 
 export class Server {
     public app: Express;
-    public port: number;
     private socket: Socket;
-
-    public getPort = (): number => process.env.PORT ? parseInt(process.env.PORT!, 10) : 3000;
 
     constructor () {
         this.app = express();
-        this.port = this.getPort();
         if (!this.envsOK()) {
             error(chalk`Your env keys are incorrect.\r\nCopy {cyan .env.default} to {cyan .env} and enter a URL and API key for {underline Sonarr} and/or {underline Radarr}`);
             process.exit(1);
@@ -46,7 +43,7 @@ export class Server {
         const http = new HttpServer(this.app);
         this.socket = new Socket(http);
         this.socket.bind();
-        http.listen(this.port, this.onListen);
+        http.listen(port, this.onListen);
     };
 
     private envsOK (): boolean {
@@ -55,7 +52,7 @@ export class Server {
 
     private onListen = (err: Error): void => {
         if (err) {
-            error(`Unable to start server on port ${this.port}`, err);
+            error(`Unable to start server on port ${port}`, err);
             return;
         }
 
@@ -64,8 +61,8 @@ export class Server {
         }
 
         info(`We're live.\r\n`);
-        info(chalk`{bold On your network:}     {underline http://${ip.address('public')}:{bold ${this.port.toLocaleString()}}/}`);
-        info(chalk`Local:               {underline http://${ip.address('private')}:{bold ${this.port.toString()}}/}`);
+        info(chalk`{bold On your network:}     {underline http://${ip.address('public')}:{bold ${port.toString()}}/}`);
+        info(chalk`Local:               {underline http://${ip.address('private')}:{bold ${port.toString()}}/}`);
     };
 
     private setRoutes () {
