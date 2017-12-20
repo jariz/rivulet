@@ -7,7 +7,7 @@ import { default as querystring, stringify } from 'querystring';
 import { pathExists } from 'fs-extra';
 import { createReadStream } from 'fs';
 import srt2vtt from 'srt-to-vtt';
-import { debug, error } from '../services/log';
+import { debug } from '../services/log';
 import ffmpeg, { FfprobeData } from 'fluent-ffmpeg';
 import chalk from 'chalk';
 import * as util from 'util';
@@ -120,8 +120,8 @@ Library.get(relative(serveTranscodedFileUrl(':episodeFileId', ':file'), Controll
                 .on('error', (err: Error) => {
                     next(err);
                 })
-                .on('stderr', (stdErrLine: string) => {
-                    error(chalk`{bgCyan.black  ffmpeg } ${stdErrLine}`);
+                .on('stdout', (stdOutLine: string) => {
+                    debug(chalk`{bgCyan.black  ffmpeg } ${stdOutLine}`);
                 });
 
             if (req.query.seek) {

@@ -1,4 +1,11 @@
 import { Episode } from '../../typings/media';
+import { User } from '../../typings/models/user';
+
+export const fakeUser: User = {
+    username: 'fakey',
+    password: 'mcfake',
+    id: 'fake'
+};
 
 export const fakeEpisode: Episode = {
     'seriesId': 1,

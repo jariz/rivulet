@@ -5,7 +5,10 @@ import { EventEmitter } from 'events';
 
 export interface Status {
     currentTime: number;
-    volume: number;
+    volume: {
+        level: number;
+        muted: boolean;
+    };
     paused: boolean;
     skipPossible: boolean;
 }
@@ -17,9 +20,9 @@ export abstract class Receiver extends EventEmitter {
     
     abstract connect (): Promise<Status>;
     
-    abstract play (): Promise<void>;
-    abstract pause (): Promise<void>;
-    abstract stop (): Promise<void>;
-    abstract seek (time: number): Promise<void>;
-    abstract skip (): Promise<void>;
+    abstract play (): Promise<Status>;
+    abstract pause (): Promise<Status>;
+    abstract stop (): Promise<Status>;
+    abstract seek (time: number): Promise<Status>;
+    abstract skip (): Promise<Status>;
 }

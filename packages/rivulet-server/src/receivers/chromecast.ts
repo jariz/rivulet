@@ -26,6 +26,8 @@ import { User } from '../../typings/models/user';
 export default class Chromecast extends Receiver {
     client: Client;
     host: string;
+    status?: ChromecastStatus;
+    player?: Player;
     
     constructor (device: Device, episode: Episode, owner: User) {
         super(device, episode, owner);
@@ -35,20 +37,16 @@ export default class Chromecast extends Receiver {
 
     connect (): Promise<Status> {
         this.client = new Client();
-
-        this.client.on('status', ({ volume, currentTime, playerState, items, currentItemId }: ChromecastStatus) => {
-            let nextItem;
-            if (currentItemId && items) {
-                nextItem = items.find(item => item.itemId === currentItemId);
+        
+        this.client.on('status', (status: ChromecastStatus) => {
+            if (!this.status) {
+                this.status = status;
             }
-
-            const normalizedStatus: Status = {
-                paused: playerState === 'PAUSED',
-                currentTime,
-                volume,
-                skipPossible: !!nextItem
-            };
-            debug('Chromecast emitting status!', normalizedStatus);
+            
+            this.status = Object.assign(this.status, status);
+            
+            const normalizedStatus = this.normalizeStatus(status);
+            debug('Chromecast emitting status!', status);
             this.emit('status', normalizedStatus);
         });
 
@@ -59,7 +57,7 @@ export default class Chromecast extends Receiver {
                     debug(chalk`Connected to {cyan ${this.device.name}} {dim ${this.host}}`);
 
                     const launch = util.promisify<App, Player>(this.client.launch.bind(this.client));
-                    const player: Player = await launch(DefaultMediaReceiver);
+                    this.player = await launch(DefaultMediaReceiver);
                     debug(chalk`DefaultMediaReceiver launched on {cyan ${this.device.name}} {dim ${this.host}}`);
 
                     debug('Getting episode list to generate full playlist...');
@@ -72,9 +70,6 @@ export default class Chromecast extends Receiver {
                     ];
 
                     const auth = sign({ sub: this.owner.id }, secretKey);
-
-                    debug('auth', auth);
-                    // debug('Generated playlist:', playlist.map(episode => `S${episode.seasonNumber}E${episode.episodeNumber} - ${episode.title}`));
                     const queue: QueueItem[] = playlist.map(item => {
                         const transcodeUrl = serveTranscodedFileUrl(item.episodeFile.id, path.basename(item.episodeFile.path, path.extname(item.episodeFile.path)) + '.mp4', { auth });
                         debug(transcodeUrl);
@@ -106,53 +101,91 @@ export default class Chromecast extends Receiver {
 
                     // todo LOAD VTT HERE!!!!
 
-                    const queueLoad = util.promisify<QueueItem[], QueueOpts, Status>(player.queueLoad.bind(player));
-                    const status: Status = await queueLoad(queue, {
+                    const queueLoad = util.promisify<QueueItem[], QueueOpts, ChromecastStatus>(this.player.queueLoad.bind(this.player));
+                    const status: ChromecastStatus = await queueLoad(queue, {
                         startIndex: 0,
                         repeatMode: 'REPEAT_OFF'
                     });
-
+                    this.status = status;
                     debug('queue loaded, status:', status);
 
-                    setTimeout(async () => {
-                        try {
-                            const queueUpdate = util.promisify<QueueItem[], QueueUpdateOpts, Status>(player.queueUpdate.bind(player));
-                            const updatedStatus: Status = await queueUpdate([], { currentItemId: 2 });
-                            debug('queueUpdate', updatedStatus);
-                        } catch (ex) {
-                            error(ex);
-                        }
-                    }, 10000);
+                    const normalizedStatus = this.normalizeStatus(status);
+                    resolve(normalizedStatus);
                 } catch (ex) {
                     error(ex);
+                    reject(ex);
                 }
             });
 
-            this.client.on('error', (err) => {
-                error('Chromecast client fatal error!', err);
+            this.client.on('error', (ex) => {
+                error('Chromecast client fatal error!', ex);
                 error('Client will now close connection...');
                 this.client.close();
+                reject(ex);
             });
         });
     }
 
-    async play (): Promise<void> {
-        throw new Error('Method not implemented.');
+    async play () {
+        if (!this.player) {
+            throw new Error('Attempted to modify playback without a connection');
+        }
+
+        const play = util.promisify<ChromecastStatus>(this.player.play.bind(this.player));
+        return this.normalizeStatus(await play());
     }
 
-    async pause (): Promise<void> {
-        throw new Error('Method not implemented.');
+    async pause () {
+        if (!this.player) {
+            throw new Error('Attempted to modify playback without a connection');
+        }
+
+        const pause = util.promisify<ChromecastStatus>(this.player.pause.bind(this.player));
+        return this.normalizeStatus(await pause());
     }
 
-    async stop (): Promise<void> {
-        throw new Error('Method not implemented.');
+    async stop () {
+        if (!this.player) {
+            throw new Error('Attempted to modify playback without a connection');
+        }
+
+        const stop = util.promisify<ChromecastStatus>(this.player.stop.bind(this.player));
+        return this.normalizeStatus(await stop());
     }
 
-    async seek (time: number): Promise<void> {
-        throw new Error('Method not implemented.');
+    async seek (time: number) {
+        if (!this.player) {
+            throw new Error('Attempted to modify playback without a connection');
+        }
+
+        const seek = util.promisify<number, ChromecastStatus>(this.player.seek.bind(this.player));
+        return this.normalizeStatus(await seek(time));
     }
 
-    async skip (): Promise<void> {
-        throw new Error('Method not implemented.');
+    async skip () {
+        const valid = this.player && this.status && this.status.currentItemId
+        if (!valid) {
+            throw new Error('Attempted to skip without being connected to device');
+        }
+
+        const queueUpdate = util.promisify<QueueItem[], QueueUpdateOpts, ChromecastStatus>(this.player!.queueUpdate.bind(this.player!));
+        const updatedStatus: ChromecastStatus = await queueUpdate([], { currentItemId: this.status!.currentItemId! + 1 });
+        debug('queueUpdate', updatedStatus);
+        return this.normalizeStatus(updatedStatus);
+    }
+    
+    private normalizeStatus = (status: ChromecastStatus): Status => {
+        const { volume, currentTime, playerState, items, currentItemId } = status;
+        let nextItem;
+        if (currentItemId && items) {
+            nextItem = items.find(item => item.itemId === currentItemId);
+        }
+
+        return {
+            paused: playerState === 'PAUSED',
+            currentTime,
+            volume,
+            skipPossible: !!nextItem
+        }
     }
 }

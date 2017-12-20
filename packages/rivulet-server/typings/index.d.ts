@@ -2,10 +2,10 @@
 
 import ReadWriteStream = NodeJS.ReadWriteStream;
 
-type Name = string | 'public' | 'private'
-type Family = 'ipv4' | 'ipv6'
-
 declare module 'ip' {
+    type Name = string | 'public' | 'private'
+    type Family = 'ipv4' | 'ipv6'
+
     export function address (name?: Name, family?: Family): string
 }
 
@@ -21,17 +21,9 @@ declare module 'node-ssdp' {
         constructor (opts?: SsdpOpts);
 
         search (serviceType: string): string;
+
         stop (): void;
     }
-}
-
-type CallSite = {
-    getMethodName: () => string;
-    getFunctionName: () => string;
-}
-
-declare module 'stack-trace' {
-    export function get (): CallSite[];
 }
 
 declare const ____srt2vtt: () => ReadWriteStream;
@@ -41,9 +33,15 @@ declare module 'srt-to-vtt' {
 
 declare module 'castv2-client' {
     import { EventEmitter } from 'events';
-    export type App = any; // todo type
-    export type RepeatMode = 'REPEAT_OFF' | 'REPEAT_ALL' | 'REPEAT_SINGLE' | 'REPEAT_ALL_AND_SHUFFLE';
-    
+    type App = any; // todo type
+    type RepeatMode = 'REPEAT_OFF' | 'REPEAT_ALL' | 'REPEAT_SINGLE' | 'REPEAT_ALL_AND_SHUFFLE';
+
+    // https://developers.google.com/cast/docs/reference/receiver/cast.receiver.media.Volume
+    export type Volume = {
+        level: number,
+        muted: boolean
+    }
+
     // https://developers.google.com/cast/docs/reference/receiver/cast.receiver.media.MediaStatus
     export type Status = {
         activeTrackIds?: number[],
@@ -62,16 +60,16 @@ declare module 'castv2-client' {
         supportedMediaCommands: number;
         type: string;
         videoInfo: VideoInfo;
-        volume: number;
+        volume: Volume;
     };
-    
+
     // https://developers.google.com/cast/docs/reference/receiver/cast.receiver.media.VideoInformation.html
     export interface VideoInfo {
         hdrType?: 'SDR' | 'HDR' | 'DV';
         width: number;
         height: number;
     }
-    
+
     // https://developers.google.com/cast/docs/reference/receiver/cast.receiver.media.QueueItem
     export interface QueueItem {
         activeTrackIds?: number[];
@@ -83,7 +81,7 @@ declare module 'castv2-client' {
         preloadTime?: number;
         startTime?: number;
     }
-    
+
     // https://developers.google.com/cast/docs/reference/caf_receiver/cast.framework.messages.MediaInformation
     export interface Media {
         contentId: string;
@@ -92,9 +90,9 @@ declare module 'castv2-client' {
         metadata: GenericMetadata;
         customData?: any;
         entity?: string;
-        
+
     }
-    
+
     // https://developers.google.com/cast/docs/reference/receiver/cast.receiver.media#.MetadataType
     export enum MetadataType {
         GENERIC = 0,
@@ -102,13 +100,13 @@ declare module 'castv2-client' {
         TV_SHOW = 2,
         MUSIC_TRACK = 3,
         PHOTO = 4
-    } 
-    
+    }
+
     // https://developers.google.com/cast/docs/reference/caf_receiver/cast.framework.messages.MediaMetadata
     export interface Metadata {
         type: MetadataType
     }
-    
+
     export interface GenericMetadata extends Metadata {
         type: MetadataType.GENERIC;
         releaseDate?: string;
@@ -118,19 +116,29 @@ declare module 'castv2-client' {
 
     export const DefaultMediaReceiver: App;
     export type LoadOpts = { autoplay?: boolean };
+
     export interface QueueOpts {
         startIndex?: number,
         startTime?: number,
         currentTime?: number,
         repeatMode?: RepeatMode;
     }
+
     export type QueueUpdateOpts = QueueOpts & {
         jump?: number,
         currentItemId?: number
     };
 
     export class Player extends EventEmitter {
-        load (media: any, opts: LoadOpts, cb: (err: Error, status: Status) => void): void;
+        load (media: Media, opts: LoadOpts, cb: (err: Error, status: Status) => void): void;
+
+        play (callback: (err: Error, status: Status) => void): void;
+
+        pause (callback: (err: Error, status: Status) => void): void;
+
+        stop (callback: (err: Error, status: Status) => void): void;
+
+        seek (currentTime: number, callback: (err: Error, status: Status) => void): void;
 
         queueLoad (queue: QueueItem[], opts: QueueOpts, cb: (err: Error, status: Status) => void): void;
 
