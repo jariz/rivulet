@@ -66,7 +66,7 @@ class Discovery extends EventEmitter {
     } 
 
     search () {
-        debug('Initiating SSDP discovery...');
+        debug('Running SSDP discovery...');
         this.previouslyDiscoveredDevices = new Map(this.discoveredDevices);
         this.discoveredDevices = new Map();
 

@@ -1,11 +1,19 @@
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import passport from 'passport';
 import { User } from '../../typings/models/user';
-import { debug } from '../services/log';
+import { debug, warn } from '../services/log';
 import db from '../sources/db';
 import config from '../sources/config';
+import { NextFunction, Request, Response } from 'express';
+
+const isTesting = process.env.NODE_ENV === 'test';
 
 export default () => {
+    if (isTesting) {
+        warn('Auth handler: disabling authorization because we\'re in testing mode.');
+        return;
+    }
+
     passport.use(
         new Strategy({
                 jwtFromRequest: ExtractJwt.fromExtractors([
@@ -28,4 +36,7 @@ export default () => {
     );
 }
 
-export const handler = passport.authenticate('jwt', { session: false });
+export const handler = (
+    !isTesting ? passport.authenticate('jwt', { session: false })
+        : (req: Request, res: Response, next: NextFunction) => next()
+);

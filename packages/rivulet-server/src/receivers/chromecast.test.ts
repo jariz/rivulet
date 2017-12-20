@@ -1,9 +1,13 @@
 import Discovery, { Device } from '../discovery';
-import { User } from '../../typings/models/user';
-import uuid from 'uuid/v4';
-import db from '../sources/db';
-import { fakeEpisode } from '../constants/mock';
+import { fakeEpisode, fakeUser } from '../constants/mock';
 import Chromecast from './chromecast';
+import Server from '../server';
+import { Status } from './Receiver';
+import { debug } from '../services/log';
+
+jest.setTimeout(30 * 1000);
+const server = new Server();
+server.start();
 
 const findDevice: Promise<Device> = new Promise((resolve, reject) => {
     const deviceFound = (currentDevice: Device) => {
@@ -17,20 +21,6 @@ const findDevice: Promise<Device> = new Promise((resolve, reject) => {
     Discovery.once('device-discovered', deviceFound);
 });
 
-let user: User;
-it('Creates a fake account to authorize chromecast requests', async () => {
-    expect.assertions(1);
-
-    const collection = await db.getCollection<User>('users');
-    user = await collection.insertOne({
-        id: uuid(),
-        username: 'mocky',
-        password: uuid()
-    })!;
-
-    expect(user).not.toBeNull();
-});
-
 let device: Device;
 it('Discovers a device', async () => {
     expect.assertions(1);
@@ -38,14 +28,44 @@ it('Discovers a device', async () => {
     expect(device.type).toBe('chromecast');
 });
 
+let cast: Chromecast;
 it('Connects to the device', async () => {
-    // expect.assertions(1);
-    const cast = new Chromecast(device, fakeEpisode, user);
-    await cast.connect();
-
+    cast = new Chromecast(device, fakeEpisode, fakeUser);
+    const status: Status = await cast.connect();
+    expect(status.volume.level).toBeGreaterThan(0);
+    expect(status.volume.muted).not.toBeTruthy();
+    expect(status.skipPossible).toBeTruthy();
+    expect(typeof status.currentTime).toBe('number');
+    expect(status.paused).toBeFalsy();
 });
 
-it('Cleans up the account again', async () => {
-    const collection = await db.getCollection<User>('users');
-    collection.removeWhere({ id: user.id });
+it('Pauses', async () => {
+    const status: Status = await cast.pause();
+    expect(status.paused).toBeTruthy();
+});
+
+it('Resumes', async () => {
+    const status: Status = await cast.play();
+    expect(status.paused).toBeFalsy();
+});
+
+it('Seeks', async () => {
+    const status: Status = await cast.seek(0);
+    expect(status.currentTime).toBe(0);
+});
+
+it('Skips to the next episode', async () => {
+    const status: Status = await cast.skip();
+    debug('Skips to the next episode', status);
+    expect(status.skipPossible).toBeTruthy();
+});
+
+it('Stops playback', async () => {
+    const status: Status = await cast.stop();
+    debug('Stops playback', status);
+    
+});
+
+it('Cleans up', async () => {
+    server.stop();
 });
