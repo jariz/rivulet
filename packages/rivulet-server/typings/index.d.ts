@@ -38,8 +38,8 @@ declare module 'castv2-client' {
 
     // https://developers.google.com/cast/docs/reference/receiver/cast.receiver.media.Volume
     export type Volume = {
-        level: number,
-        muted: boolean
+        level?: number,
+        muted?: boolean
     }
 
     // https://developers.google.com/cast/docs/reference/receiver/cast.receiver.media.MediaStatus

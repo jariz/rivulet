@@ -4,8 +4,8 @@ import { User } from '../../typings/models/user';
 import { EventEmitter } from 'events';
 
 export interface Volume {
-    level: number;
-    muted: boolean;
+    level?: number,
+    muted?: boolean
 };
 
 export interface Status {
@@ -22,7 +22,6 @@ export abstract class Receiver extends EventEmitter {
     }
     
     abstract connect (): Promise<Status>;
-    
     abstract play (): Promise<Status>;
     abstract pause (): Promise<Status>;
     abstract stop (): Promise<Status>;
