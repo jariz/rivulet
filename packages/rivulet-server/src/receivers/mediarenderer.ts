@@ -5,7 +5,7 @@ import Socket from "../socket";
 import {Episode} from "../../typings/media";
 import {error} from "../services/log";
 
-// TODO promisify methods.
+// TODO promisify methods where possible.
 export class Mediarenderer extends Receiver {
     client: any;
 
@@ -15,6 +15,7 @@ export class Mediarenderer extends Receiver {
     }
 
     onLoad() {
+        // i.e send request via websocket to notify frontend that is loading, etc etc
         console.log('client is loading!');
     }
 
@@ -83,20 +84,25 @@ export class Mediarenderer extends Receiver {
                 // for the headers the srt server should send
                 // and https://www.npmjs.com/package/upnp-mediarenderer-client
                 // for more info
-
-                // subtitlesUrl: 'https://raw.githubusercontent.com/andreyvit/subtitle-tools/master/sample.srt'
+                // subtitlesUrl: ''
             }
         }
     }
 
 
     send() {
-        // 1080p crashes?!
-        // 1080p uri: http://commondatastorage.googleapis.com/gtv-videos-bucket/big_buck_bunny_1080p.mp4
-        //
-        this.client.load('http://clips.vorwaerts-gmbh.de/big_buck_bunny.mp4', this.options, (err: any, result: any) => {
+        // sample video list: http://www.demo-world.eu/2d-demo-trailers-hd/
+        // 720p uri: http://sample-videos.com/video/mp4/720/big_buck_bunny_720p_10mb.mp4
+        // 1080p uri: http://s1.demo-world.eu/hd_trailers.php?file=sony_paris-DWEU.mkv
+        this.client.load('http://s1.demo-world.eu/hd_trailers.php?file=sony_paris-DWEU.mkv', this.options, (err: any, result: any) => {
             if (err) {
-                return error(err);
+                switch (err.errorCode) {
+                    case 716:
+                        return error('Media not found. ');
+
+                    default:
+                        return error(err);
+                }
             }
 
             this.client.on('loading', this.onLoad);
@@ -108,8 +114,12 @@ export class Mediarenderer extends Receiver {
         })
     }
 
+
+
     connect() {
         this.client = new MediaRendererClient(this.device.location);
+
+        //
         this.send();
     };
 

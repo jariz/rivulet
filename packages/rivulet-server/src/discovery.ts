@@ -6,7 +6,7 @@ import chalk from 'chalk';
 import {EventEmitter} from 'events';
 import {DIAL, MEDIA_RENDERER} from './global/serviceTypes';
 
-type DeviceType = 'chromecast' | 'mediarenderer';
+type DeviceType = 'chromecast' | 'mediarenderer' | 'mediaserver';
 export type Device = {
     usn: string;
     type: DeviceType;
@@ -69,7 +69,7 @@ class Discovery extends EventEmitter {
         this.discoveredDevices = new Map();
 
         // possible chromecast device
-        this.client.search(DIAL);
+        // this.client.search(DIAL);
         // general media renderer
         this.client.search(MEDIA_RENDERER);
 

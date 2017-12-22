@@ -1,13 +1,13 @@
-import express, { Express } from 'express';
+import express, {Express} from 'express';
 import dotenv from 'dotenv';
-import { error, info, warn } from './services/log';
+import {error, info, warn} from './services/log';
 import chalk from 'chalk';
 import ip from 'ip';
 import Devices from './controllers/devices';
 import Socket from './socket';
-import { Server as HttpServer } from 'http';
+import {Server as HttpServer} from 'http';
 import createDBClient from './factories/createDBClient';
-import createAuthHandler, { handler as authHandler } from './factories/createAuthHandler';
+import createAuthHandler from './factories/createAuthHandler';
 import Auth from './controllers/auth';
 import loki from 'lokijs';
 import createConfig from './factories/createConfig';
@@ -27,7 +27,7 @@ export class Server {
     public config: Config;
     private socket: Socket;
 
-    constructor () {
+    constructor() {
         this.app = express();
         this.port = this.getPort();
         if (!this.envsOK()) {
@@ -37,13 +37,13 @@ export class Server {
         this.start().catch((err) => error('Unable to initialize!', err));
     }
 
-    private envsOK (): boolean {
+    private envsOK(): boolean {
         return ['RADARR', 'SONARR'].some(type => validVar(`${type}_API_URL`) && validVar(`${type}_API_KEY`));
     }
 
-    private async start () {
+    private async start() {
         // Discovery.start();
-        
+
         this.config = await createConfig();
         this.db = createDBClient();
 
@@ -74,11 +74,11 @@ export class Server {
 
     private getPort = (): number => process.env.PORT ? parseInt(process.env.PORT!, 10) : 3000;
 
-    private setRoutes () {
+    private setRoutes() {
         this.app.use('/auth', Auth);
 
         // everything else is authorized(!)
-        this.app.use(authHandler);
+        // this.app.use(authHandler);
         this.app.use('/devices', Devices);
         this.app.use('/library', Library);
     };
