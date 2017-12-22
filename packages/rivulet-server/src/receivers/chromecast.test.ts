@@ -2,7 +2,7 @@ import Discovery, { Device } from '../discovery';
 import { fakeEpisode, fakeUser } from '../constants/mock';
 import Chromecast from './chromecast';
 import Server from '../server';
-import { Status } from './Receiver';
+import { Status, Volume } from './Receiver';
 import { debug } from '../services/log';
 
 jest.setTimeout(30 * 1000);
@@ -63,7 +63,20 @@ it('Skips to the next episode', async () => {
 it('Stops playback', async () => {
     const status: Status = await cast.stop();
     debug('Stops playback', status);
-    
+});
+
+it('Changes volume', async () => {
+    const volume: Volume = await cast.setVolume({
+        level: 0.5
+    });
+    expect(volume.level).toBe(0.5);
+});
+
+it('Mutes volume', async () => {
+    const volume: Volume = await cast.setVolume({
+        muted: true
+    });
+    expect(volume.muted).toBeTruthy();
 });
 
 it('Cleans up', async () => {
