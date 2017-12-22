@@ -3,13 +3,16 @@ import { Episode } from '../../typings/media';
 import { User } from '../../typings/models/user';
 import { EventEmitter } from 'events';
 
+export interface Volume {
+    level: number;
+    muted: boolean;
+};
+
 export interface Status {
     currentTime: number;
-    volume: {
-        level: number;
-        muted: boolean;
-    };
+    volume: Volume;
     paused: boolean;
+    loading: boolean;
     skipPossible: boolean;
 }
 
@@ -25,4 +28,5 @@ export abstract class Receiver extends EventEmitter {
     abstract stop (): Promise<Status>;
     abstract seek (time: number): Promise<Status>;
     abstract skip (): Promise<Status>;
+    abstract setVolume (volume: Volume): Promise<Volume>;
 }

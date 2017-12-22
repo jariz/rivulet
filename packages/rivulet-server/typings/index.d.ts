@@ -150,6 +150,10 @@ declare module 'castv2-client' {
 
         launch (app: App, callback: (err: Error, player: Player) => void): void;
 
+        setVolume (volume: Volume, callback: (err: Error, volume: Volume) => void): void;
+
+        getVolume (volume: Volume, callback: (err: Error, volume: Volume) => void): void;
+
         close (): void;
     }
 }

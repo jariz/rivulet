@@ -7,7 +7,8 @@ import {
     QueueItem,
     QueueOpts,
     QueueUpdateOpts,
-    Status as ChromecastStatus
+    Status as ChromecastStatus,
+    Volume
 } from 'castv2-client';
 import { debug, error } from '../services/log';
 import { default as url, URL } from 'url';
@@ -28,7 +29,7 @@ export default class Chromecast extends Receiver {
     host: string;
     status?: ChromecastStatus;
     player?: Player;
-    
+
     constructor (device: Device, episode: Episode, owner: User) {
         super(device, episode, owner);
         const { hostname } = new URL(device.location);
@@ -37,14 +38,14 @@ export default class Chromecast extends Receiver {
 
     connect (): Promise<Status> {
         this.client = new Client();
-        
+
         this.client.on('status', (status: ChromecastStatus) => {
             if (!this.status) {
                 this.status = status;
             }
-            
+
             this.status = Object.assign(this.status, status);
-            
+
             const normalizedStatus = this.normalizeStatus(status);
             debug('Chromecast emitting status!', status);
             this.emit('status', normalizedStatus);
@@ -127,53 +128,59 @@ export default class Chromecast extends Receiver {
     }
 
     async play () {
-        if (!this.player) {
-            throw new Error('Attempted to modify playback without a connection');
-        }
+        this.ensurePlayer();
 
-        const play = util.promisify<ChromecastStatus>(this.player.play.bind(this.player));
+        const play = util.promisify<ChromecastStatus>(this.player!.play.bind(this.player));
         return this.normalizeStatus(await play());
     }
 
     async pause () {
-        if (!this.player) {
-            throw new Error('Attempted to modify playback without a connection');
-        }
+        this.ensurePlayer();
 
-        const pause = util.promisify<ChromecastStatus>(this.player.pause.bind(this.player));
+        const pause = util.promisify<ChromecastStatus>(this.player!.pause.bind(this.player));
         return this.normalizeStatus(await pause());
     }
 
     async stop () {
-        if (!this.player) {
-            throw new Error('Attempted to modify playback without a connection');
-        }
+        this.ensurePlayer();
 
-        const stop = util.promisify<ChromecastStatus>(this.player.stop.bind(this.player));
+        const stop = util.promisify<ChromecastStatus>(this.player!.stop.bind(this.player));
         return this.normalizeStatus(await stop());
     }
 
     async seek (time: number) {
-        if (!this.player) {
-            throw new Error('Attempted to modify playback without a connection');
-        }
+        this.ensurePlayer();
 
-        const seek = util.promisify<number, ChromecastStatus>(this.player.seek.bind(this.player));
+        const seek = util.promisify<number, ChromecastStatus>(this.player!.seek.bind(this.player));
         return this.normalizeStatus(await seek(time));
     }
 
     async skip () {
-        const valid = this.player && this.status && this.status.currentItemId
-        if (!valid) {
-            throw new Error('Attempted to skip without being connected to device');
+        if (!(this.player && this.status && this.status.currentItemId)) {
+            throw new Error('Skip not possible');
         }
 
-        const queueUpdate = util.promisify<QueueItem[], QueueUpdateOpts, ChromecastStatus>(this.player!.queueUpdate.bind(this.player!));
-        const updatedStatus: ChromecastStatus = await queueUpdate([], { currentItemId: this.status!.currentItemId! + 1 });
-        debug('queueUpdate', updatedStatus);
+        const queueUpdate = util.promisify<QueueItem[], QueueUpdateOpts, ChromecastStatus>(this.player.queueUpdate.bind(this.player));
+        const updatedStatus: ChromecastStatus = await queueUpdate([], { currentItemId: this.status.currentItemId! + 1 });
         return this.normalizeStatus(updatedStatus);
     }
-    
+
+    async setVolume (volume: Volume) {
+        if (!this.client) {
+            throw new Error('Attempted to modify volume without a connection');
+        }
+
+        const setVolume = util.promisify<Volume, Volume>(this.client.setVolume.bind(this.player));
+        const updatedVolume: Volume = await setVolume(volume);
+        return updatedVolume;
+    }
+
+    private ensurePlayer () {
+        if (!this.player) {
+            throw new Error('Attempted to modify playback without a loaded player');
+        }
+    }
+
     private normalizeStatus = (status: ChromecastStatus): Status => {
         const { volume, currentTime, playerState, items, currentItemId } = status;
         let nextItem;
@@ -183,9 +190,10 @@ export default class Chromecast extends Receiver {
 
         return {
             paused: playerState === 'PAUSED',
+            loading: playerState === 'BUFFERING',
             currentTime,
             volume,
             skipPossible: !!nextItem
-        }
-    }
+        };
+    };
 }
