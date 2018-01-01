@@ -17,7 +17,7 @@ export interface Status {
 }
 
 export abstract class Receiver extends EventEmitter {
-    constructor (protected device: Device, protected episode: Episode, protected owner: User) {
+    constructor (protected device: Device, protected queue: Episode[], protected owner: User) {
         super();
     }
     

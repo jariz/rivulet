@@ -13,8 +13,6 @@ import {
 import { debug, error } from '../services/log';
 import { default as url, URL } from 'url';
 import chalk from 'chalk';
-import fetchJSON from '../services/fetchJSON';
-import { episodesUrl } from '../constants/apiUrls';
 import { Episode } from '../../typings/media';
 import util from 'util';
 import { Device } from '../discovery';
@@ -30,8 +28,8 @@ export default class Chromecast extends Receiver {
     status?: ChromecastStatus;
     player?: Player;
 
-    constructor (device: Device, episode: Episode, owner: User) {
-        super(device, episode, owner);
+    constructor (device: Device, queue: Episode[], owner: User) {
+        super(device, queue, owner);
         const { hostname } = new URL(device.location);
         this.host = hostname;
     }
@@ -61,14 +59,10 @@ export default class Chromecast extends Receiver {
                     this.player = await launch(DefaultMediaReceiver);
                     debug(chalk`DefaultMediaReceiver launched on {cyan ${this.device.name}} {dim ${this.host}}`);
 
-                    debug('Getting episode list to generate full playlist...');
-                    const episodes: Episode[] = await fetchJSON(episodesUrl(this.episode.seriesId));
-
                     // grab episodes that occurred after this one
-                    const playlist = [
-                        this.episode,
-                        ...episodes.filter(episode => episode.hasFile && episode.seasonNumber >= this.episode.seasonNumber && episode.episodeNumber > this.episode.episodeNumber)
-                    ];
+                    const playlist = this.queue.filter(
+                        episode => episode.hasFile
+                    );
 
                     const auth = sign({ sub: this.owner.id }, secretKey);
                     const queue: QueueItem[] = playlist.map(item => {
@@ -131,28 +125,36 @@ export default class Chromecast extends Receiver {
         this.ensurePlayer();
 
         const play = util.promisify<ChromecastStatus>(this.player!.play.bind(this.player));
-        return this.normalizeStatus(await play());
+        const updatedStatus = await play();
+        this.status = Object.assign(this.status, updatedStatus);
+        return this.normalizeStatus(this.status);
     }
 
     async pause () {
         this.ensurePlayer();
 
         const pause = util.promisify<ChromecastStatus>(this.player!.pause.bind(this.player));
-        return this.normalizeStatus(await pause());
+        const updatedStatus = await pause();
+        this.status = Object.assign(this.status, updatedStatus);
+        return this.normalizeStatus(this.status);
     }
 
     async stop () {
         this.ensurePlayer();
 
         const stop = util.promisify<ChromecastStatus>(this.player!.stop.bind(this.player));
-        return this.normalizeStatus(await stop());
+        const updatedStatus = await stop();
+        this.status = Object.assign(this.status, updatedStatus);
+        return this.normalizeStatus(this.status);
     }
 
     async seek (time: number) {
         this.ensurePlayer();
 
         const seek = util.promisify<number, ChromecastStatus>(this.player!.seek.bind(this.player));
-        return this.normalizeStatus(await seek(time));
+        const updatedStatus = await seek(time);
+        this.status = Object.assign(this.status, updatedStatus);
+        return this.normalizeStatus(this.status);
     }
 
     async skip () {
@@ -162,15 +164,15 @@ export default class Chromecast extends Receiver {
 
         const queueUpdate = util.promisify<QueueItem[], QueueUpdateOpts, ChromecastStatus>(this.player.queueUpdate.bind(this.player));
         const updatedStatus: ChromecastStatus = await queueUpdate([], { currentItemId: this.status.currentItemId! + 1 });
-        return this.normalizeStatus(updatedStatus);
+        this.status = Object.assign(this.status, updatedStatus);
+        return this.normalizeStatus(this.status);
     }
 
     async setVolume (volume: Volume) {
         if (!this.client) {
             throw new Error('Attempted to modify volume without a connection');
         }
-
-        const setVolume = util.promisify<Volume, Volume>(this.client.setVolume.bind(this.player));
+        const setVolume = util.promisify<Volume, Volume>(this.client.setVolume.bind(this.client));
         const updatedVolume: Volume = await setVolume(volume);
         return updatedVolume;
     }

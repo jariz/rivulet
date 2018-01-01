@@ -134,7 +134,7 @@ export type EpisodeFile = {
             id: number,
             name: string
         },
-        revision: any;
+        revision?: any;
         proper?: boolean
     },
     id: number,

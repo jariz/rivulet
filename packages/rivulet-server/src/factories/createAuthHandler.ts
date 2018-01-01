@@ -5,8 +5,7 @@ import { debug, warn } from '../services/log';
 import db from '../sources/db';
 import config from '../sources/config';
 import { NextFunction, Request, Response } from 'express';
-
-const isTesting = process.env.NODE_ENV === 'test';
+import { isTesting } from '../constants/env';
 
 export default () => {
     if (isTesting) {
