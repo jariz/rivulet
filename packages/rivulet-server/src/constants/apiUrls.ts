@@ -9,5 +9,6 @@ export const radarrAvailable = () => testVars('RADARR');
 export const sonarrAvailable = () => testVars('SONARR');
 
 export const seriesUrl = () => url('series', 'SONARR');
-export const episodeFileUrl = (id: string) => url(`episodefile/${id}`, 'SONARR');
+export const episodeFileUrl = (id: number) => url(`episodefile/${id}`, 'SONARR');
+export const episodesUrl = (seriesId?: number) => url('episode', 'SONARR') + (seriesId ? `&seriesId=${seriesId}` : '');
 export const moviesUrl = () => url('movie', 'RADARR');

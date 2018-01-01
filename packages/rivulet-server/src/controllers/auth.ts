@@ -1,10 +1,12 @@
 import { NextFunction, Request, Response, Router } from 'express';
-import main from '../main';
 import { User } from '../../typings/models/user';
 import { check, validationResult } from 'express-validator/check';
-import { hash, compare } from 'bcrypt';
+import { compare, hash } from 'bcrypt';
 import uuid from 'uuid/v4';
 import { sign } from 'jsonwebtoken';
+import { Controllers, loginUrl, registerUrl, relative } from '../constants/urls';
+import db from '../sources/db';
+import config from '../sources/config';
 
 const Auth: Router = Router();
 
@@ -14,14 +16,14 @@ const validations = [
 ];
 
 // todo will probably be removed entirely and replaced with invitation email a là streama
-Auth.get('/register', validations, async (req: Request, res: Response, next: NextFunction) => {
+Auth.get(relative(registerUrl(), Controllers.Auth), validations, async (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(422).json({ errors: errors.mapped() });
     }
 
     try {
-        const { db, config: { salt, secretKey } } = main;
+        const { salt, secretKey } = config;
 
         const users = db.getCollection<User>('users');
         const { username, password } = req.body;
@@ -40,14 +42,14 @@ Auth.get('/register', validations, async (req: Request, res: Response, next: Nex
     }
 });
 
-Auth.get('/login', validations, async (req: Request, res: Response, next: NextFunction) => {
+Auth.get(relative(loginUrl(), Controllers.Auth), validations, async (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(422).json({ errors: errors.mapped() });
     }
 
     try {
-        const { db, config: { secretKey } } = main;
+        const { secretKey } = config;
 
         const users = db.getCollection<User>('users');
         const { username, password } = req.body;

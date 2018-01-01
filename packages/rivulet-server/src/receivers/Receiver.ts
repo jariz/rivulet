@@ -1,25 +1,31 @@
-import Socket from '../socket';
-import {Device} from '../discovery';
-import {Episode} from '../../typings/media';
+import { Device } from '../discovery';
+import { Episode } from '../../typings/media';
+import { User } from '../../typings/models/user';
+import { EventEmitter } from 'events';
 
-export class Receiver {
-    device: Device;
-    episode: Episode;
-    socket: Socket;
+export interface Volume {
+    level?: number,
+    muted?: boolean
+};
 
-    constructor(device: Device, episode: Episode, socket: Socket) {
-        this.device = device;
-        this.episode = episode;
-        this.socket = socket;
+export interface Status {
+    currentTime: number;
+    volume: Volume;
+    paused: boolean;
+    loading: boolean;
+    skipPossible: boolean;
+}
 
-        // TODO tmp till FE is in place
-        if (device.type === 'mediarenderer') {
-            this.init();
-        }
-    }
-
-    init() {
-        // overridden
+export abstract class Receiver extends EventEmitter {
+    constructor (protected device: Device, protected queue: Episode[], protected owner: User) {
+        super();
     }
     
+    abstract connect (): Promise<Status>;
+    abstract play (): Promise<Status>;
+    abstract pause (): Promise<Status>;
+    abstract stop (): Promise<Status>;
+    abstract seek (time: number): Promise<Status>;
+    abstract skip (): Promise<Status>;
+    abstract setVolume (volume: Volume): Promise<Volume>;
 }

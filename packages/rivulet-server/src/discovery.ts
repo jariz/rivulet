@@ -1,12 +1,13 @@
-import {Client} from 'node-ssdp';
-import {debug, error} from './services/log';
+import { Client } from 'node-ssdp';
+import { debug, error } from './services/log';
 import fetch from 'node-fetch';
-import xml, {Element} from 'xml-js';
+import xml, { Element } from 'xml-js';
 import chalk from 'chalk';
-import {EventEmitter} from 'events';
-import {DIAL, MEDIA_RENDERER} from './global/serviceTypes';
+import { EventEmitter } from 'events';
+import { DIAL, MEDIA_RENDERER } from './constants/serviceTypes';
+import Timer = NodeJS.Timer;
 
-type DeviceType = 'chromecast' | 'mediarenderer' | 'mediaserver';
+type DeviceType = 'chromecast' | 'mediarenderer';
 export type Device = {
     usn: string;
     type: DeviceType;
@@ -47,29 +48,30 @@ class Discovery extends EventEmitter {
     discoveredDevices: DeviceMap = new Map();
     private previouslyDiscoveredDevices: DeviceMap = new Map();
     private client: Client;
+    private timer: Timer;
 
-    constructor() {
-        super();
-        this.start();
-    }
-
-    start() {
+    start () {
         this.client = new Client({
             customLogger: (...args: any[]) => debug(chalk`{black {bgRed  SSDP }}`, ...args)
         });
 
-        setInterval(() => this.search(), 1000 * 60);
+        this.timer = setInterval(() => this.search(), 1000 * 60);
         this.search();
         this.client.on('response', this.onFound);
     }
+    
+    stop () {
+        clearInterval(this.timer);
+        this.client.stop();
+    } 
 
-    search() {
-        debug('Initiating SSDP discovery...');
+    search () {
+        debug('Running SSDP discovery...');
         this.previouslyDiscoveredDevices = new Map(this.discoveredDevices);
         this.discoveredDevices = new Map();
 
         // possible chromecast device
-        // this.client.search(DIAL);
+        this.client.search(DIAL);
         // general media renderer
         this.client.search(MEDIA_RENDERER);
 
@@ -87,7 +89,7 @@ class Discovery extends EventEmitter {
             this.discoveredDevices.set(dev.usn, dev);
             return;
         }
-
+        
         try {
             switch (headers.ST) {
                 case MEDIA_RENDERER: {
@@ -114,7 +116,7 @@ class Discovery extends EventEmitter {
         }
     };
 
-    private findLeft() {
+    private findLeft () {
         // detect devices that aren't here anymore
         const leftDevices: DeviceInfo[] = Array.from(this.previouslyDiscoveredDevices.keys())
             .filter(deviceKey => (
@@ -128,7 +130,7 @@ class Discovery extends EventEmitter {
         }
     }
 
-    private addDevice(headers: any, deviceInfo: any, type: Device['type']) {
+    private addDevice (headers: any, deviceInfo: any, type: Device['type']) {
         const name = deviceInfo.friendlyName || deviceInfo.modelName || 'Unknown device';
         const device: Device = {
             usn: headers.USN,
