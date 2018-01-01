@@ -67,10 +67,6 @@ Library.get('/serve/show/subtitle/:episodeFileId.vtt', async (req: Request, res:
     try {
         let { path: filePath }: EpisodeFile = await fetchJSON(episodeFileUrl(req.params.episodeFileId));
 
-        ///////// jari dev only //////////
-        filePath = '/Volumes/hdd/' + filePath.substring(9);
-        //////////////////////////////////
-
         const srtPath = path.join(path.dirname(filePath), path.basename(filePath, path.extname(filePath)) + '.srt');
         debug('Looking for', srtPath);
         if (await pathExists(srtPath)) {
@@ -98,19 +94,15 @@ Library.get(relative(serveTranscodedFileUrl(':episodeFileId', ':file'), Controll
         try {
             const body: EpisodeFile = await fetchJSON(episodeFileUrl(req.params.episodeFileId));
 
-            ///////// jari dev only //////////
-            body.path = '/Volumes/hdd/' + body.path.substring(9);
-            //////////////////////////////////
-
             if (!await pathExists(body.path)) {
                 res.status(404).send();
                 return;
             }
 
             res.contentType('mp4');
-            let transcoder = ffmpeg(createReadStream(body.path))
+            let transcoder = ffmpeg(body.path)
                 .videoCodec('libx264')
-                .audioChannels(2)
+                // .audioChannels(2)
                 .format('mp4')
                 .outputOptions('-preset ultrafast')
                 .outputOptions('-movflags frag_keyframe+empty_moov')
@@ -120,7 +112,7 @@ Library.get(relative(serveTranscodedFileUrl(':episodeFileId', ':file'), Controll
                 .on('error', (err: Error) => {
                     next(err);
                 })
-                .on('stdout', (stdOutLine: string) => {
+                .on('stderr', (stdOutLine: string) => {
                     debug(chalk`{bgCyan.black  ffmpeg } ${stdOutLine}`);
                 });
 
@@ -139,10 +131,6 @@ Library.get(relative(serveFileUrl(':episodeFileId', ':file'), Controllers.Librar
         try {
             const body: EpisodeFile = await fetchJSON(episodeFileUrl(req.params.episodeFileId));
 
-            ///////// jari dev only //////////
-            body.path = '/Volumes/hdd/' + body.path.substring(9);
-            //////////////////////////////////
-
             res.sendFile(body.path);
         } catch (ex) {
             next(ex);
@@ -153,9 +141,6 @@ Library.get(relative(serveUrl(':episodeFileId'), Controllers.Library), async (re
     try {
         const body: EpisodeFile = await fetchJSON(episodeFileUrl(req.params.episodeFileId));
         const query = Object.keys(req.query).length ? '?' + stringify(req.query) : '';
-        ///////// jari dev only //////////
-        body.path = '/Volumes/hdd/' + body.path.substring(9);
-        //////////////////////////////////
 
         const { format: { duration } } = await probe(body.path);
 

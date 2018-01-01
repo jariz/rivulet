@@ -1,17 +1,16 @@
 import Discovery, { Device } from '../discovery';
-import { fakeEpisode, fakeUser } from '../constants/mock';
+import { fakeEpisodes, fakeUser } from '../constants/mock';
 import Chromecast from './chromecast';
-import Server from '../server';
 import { Status, Volume } from './Receiver';
 import { debug } from '../services/log';
+import cleanupTests from '../cleanupTests';
 
 jest.setTimeout(30 * 1000);
-const server = new Server();
-server.start();
 
 const findDevice: Promise<Device> = new Promise((resolve, reject) => {
     const deviceFound = (currentDevice: Device) => {
-        if (currentDevice.type !== 'chromecast' || currentDevice.name !== 'Jari') {
+        if (currentDevice.type !== 'chromecast' 
+            || currentDevice.name !== 'Jari') {
             Discovery.once('device-discovered', deviceFound);
             return;
         }
@@ -30,7 +29,7 @@ it('Discovers a device', async () => {
 
 let cast: Chromecast;
 it('Connects to the device', async () => {
-    cast = new Chromecast(device, fakeEpisode, fakeUser);
+    cast = new Chromecast(device, fakeEpisodes, fakeUser);
     const status: Status = await cast.connect();
     expect(status.volume.level).toBeGreaterThan(0);
     expect(status.volume.muted).not.toBeTruthy();
@@ -80,5 +79,7 @@ it('Mutes volume', async () => {
 });
 
 it('Cleans up', async () => {
-    server.stop();
+    // todo find a way to do this globally...
+    // every test is gonna have to call this
+    cleanupTests();
 });

@@ -47,6 +47,7 @@ export class Server {
 
     public stop () {
         this.http.close();
+        Discovery.stop();
     }
 
     private envsOK (): boolean {
