@@ -9,8 +9,7 @@ jest.setTimeout(30 * 1000);
 
 const findDevice: Promise<Device> = new Promise((resolve, reject) => {
     const deviceFound = (currentDevice: Device) => {
-        if (currentDevice.type !== 'chromecast' 
-            || currentDevice.name !== 'Jari') {
+        if (currentDevice.type !== 'chromecast') {
             Discovery.once('device-discovered', deviceFound);
             return;
         }
