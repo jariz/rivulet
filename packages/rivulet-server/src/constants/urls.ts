@@ -1,6 +1,7 @@
 import ip from 'ip';
 // import main from '../main';
 import querystring from 'querystring';
+import port from './port';
 
 type ControllerPath = '/library' | '/auth' | '/devices'
 
@@ -23,7 +24,7 @@ const generateQueryParams = (params?: { [key: string]: any }) => params ? ('?' +
 
 // utilities
 export const relative = (absoluteUrl: string, controller: ControllerPath) => absoluteUrl.substring(controller.length);
-export const base = () => process.env.BASE_URL || `http://${ip.address('public')}:3000/`;
+export const base = () => process.env.BASE_URL || `http://${ip.address('public')}:${port}/`;
 
 // urls
 export const playerUrl = (episodeFileId: number | string) => `/library/player/${episodeFileId}`;

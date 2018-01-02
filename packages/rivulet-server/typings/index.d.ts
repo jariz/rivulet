@@ -157,3 +157,46 @@ declare module 'castv2-client' {
         close (): void;
     }
 }
+
+declare module 'upnp-mediarenderer-client' {
+    import { EventEmitter } from 'events';
+
+    export type Status = any;
+
+    export interface MediaRendererMetadata {
+        type: 'image' | 'video' | 'audio';
+        title: string;
+        creator?: string;
+        subtitlesUrl?: string;
+    }
+
+    export interface MediaRendererOptions {
+        contentType?: string;
+        autoplay?: boolean;
+        metadata?: MediaRendererMetadata;
+    }
+
+    class MediaRendererClient extends EventEmitter {
+        constructor (deviceUrl: string);
+
+        // getSupportedProtocols(callback: (err: Error, ))
+
+        load (url: string, options: MediaRendererOptions, callback: (error: Error, status: Status) => void): void
+        load (url: string, callback: (error: Error) => void, status: Status): void
+
+        stop (callback: (err: Error, status: Status) => void): void;
+
+        pause (callback: (err: Error, status: Status) => void): void;
+
+        play (callback: (err: Error, status: Status) => void): void;
+
+        skip (callback: (err: Error, status: Status) => void): void;
+
+        // todo does it return a volume object or status object?
+        setVolume (volume: number, callback: (err: Error, status: Status) => void): void;
+
+        seek (currentTime: number, callback: (err: Error, status: Status) => void): void;
+    }
+
+    export default MediaRendererClient;
+}

@@ -1,84 +1,85 @@
-import {Receiver} from "./Receiver";
-import MediaRendererClient from 'upnp-mediarenderer-client';
-import {Device} from "../discovery";
-import Socket from "../socket";
-import {Episode} from "../../typings/media";
-import {error} from "../services/log";
+import { Receiver, Status, Volume } from './Receiver';
+import MediaRendererClient, { MediaRendererOptions } from 'upnp-mediarenderer-client';
+import { serveFileUrl } from '../constants/urls';
+import util from 'util';
+import { debug } from '../services/log';
 
-// TODO promisify methods where possible.
-export class Mediarenderer extends Receiver {
-    client: any;
+export class MediaRenderer extends Receiver {
+    client: MediaRendererClient;
+    queueIndex: number;
 
-    constructor(device: Device, episode: Episode, socket: Socket) {
-        super(device, episode, socket);
-        this.connect();
+    onStatus (status: any) {
+        debug('mediarenderer onstatus', status);
     }
 
-    onLoad() {
-        // i.e send request via websocket to notify frontend that is loading, etc etc
-        console.log('client is loading!');
+    async pause () {
+        const pause = util.promisify<Status>(this.client.pause.bind(this.client));
+        const status = await pause();
+        debug('mediarenderer paused', status);
+        return status;
     }
 
-    onPlay() {
-        console.log('client is playing!');
+    async stop () {
+        const stop = util.promisify<Status>(this.client.stop.bind(this.client));
+        const status = await stop();
+        debug('mediarenderer stopped', status);
+        return status;
+    }
+    
+    async seek (time: number) {
+        const seek = util.promisify<number, Status>(this.client.stop.bind(this.client));
+        const status = await seek(time);
+        debug(`mediarenderer seeked to ${time}`, status);
+        return status;
     }
 
-    onPause() {
-        console.log('client is paused!');
+    async play () {
+        const play = util.promisify<Status>(this.client.play.bind(this.client));
+        const status = await play();
+        debug('mediarenderer playing', status);
+        return status;
     }
 
-    onSpeedChange(speed: any) {
-        console.log('client speed changed!', speed);
+    async skip () {
+        if (!(this.queueIndex + 1 in this.queue)) {
+            throw new Error('Skip not possible')
+        }
+        
+        this.queueIndex++;
+        return await this.load();
     }
 
-    onStatus(status: any) {
-        console.log('status!', status);
+    async setVolume (volume: Volume) {
+        let { level, muted } = volume;
+        if (muted || !level) {
+            level = 0;
+        }
+        const setVolume = util.promisify<number, Status>(this.client.setVolume.bind(this.client));
+        // todo find out whether setVolume returns a status or not
+        // eitherway, it needs to be normalized to a Volume object
+        const status: any = await setVolume(level);
+        debug(`mediarenderer volume changed to to ${level}`, status);
+        return status;
     }
 
-    pause() {
-        this.client.pause();
+    async connect () {
+        this.queueIndex = 0;
+        this.client = new MediaRendererClient(this.device.location);
+        this.client.on('status', this.onStatus);
+
+        return await this.load();
     }
 
-    stop() {
-        this.client.stop();
-    }
-
-    // seek time in seconds
-    seek(time: number) {
-        this.client.seek(time);
-    }
-
-    play() {
-        this.client.play();
-    }
-
-    get mediaDuration() {
-        return this.client.getDuration((err: any, duration: any) => {
-            if (err) {
-                return error(err);
-            }
-            return duration;
-        });
-    }
-
-    get position() {
-        return this.client.getPosition((err: any, position: any) => {
-            if (err) {
-                return error(err);
-            }
-            return position;
-        });
-    }
-
-
-    get options() {
-        return {
+    private async load () {
+        const { episodeFile, title } = this.queue[this.queueIndex];
+        const load = util.promisify<string, MediaRendererOptions, Status>(this.client.load.bind(this.client));
+        const status = await load(serveFileUrl(episodeFile.id, episodeFile.path), {
             autoplay: true,
             contentType: 'video/mp4',
             metadata: {
-                title: 'A better movie title',
+                title: title,
                 creator: 'Thomas',
-                type: 'video',
+                type: 'video'
                 // subtitles dont work atm, see
                 // https://gist.github.com/thibauts/5f5f8d8ce6566c8289e6
                 // for the headers the srt server should send
@@ -86,41 +87,18 @@ export class Mediarenderer extends Receiver {
                 // for more info
                 // subtitlesUrl: ''
             }
-        }
-    }
+        });
 
-
-    send() {
-        // sample video list: http://www.demo-world.eu/2d-demo-trailers-hd/
-        // 720p uri: http://sample-videos.com/video/mp4/720/big_buck_bunny_720p_10mb.mp4
-        // 1080p uri: http://s1.demo-world.eu/hd_trailers.php?file=sony_paris-DWEU.mkv
-        this.client.load('http://s1.demo-world.eu/hd_trailers.php?file=sony_paris-DWEU.mkv', this.options, (err: any, result: any) => {
-            if (err) {
-                switch (err.errorCode) {
-                    case 716:
-                        return error('Media not found. ');
-
-                    default:
-                        return error(err);
-                }
-            }
-
-            this.client.on('loading', this.onLoad);
-            this.client.on('playing', this.onPlay);
-            this.client.on('stopped', this.onPlay);
-            this.client.on('paused', this.onPause);
-            this.client.on('status', this.onStatus);
-            this.client.on('speedChanged', this.onSpeedChange);
-        })
-    }
-
-
-
-    connect() {
-        this.client = new MediaRendererClient(this.device.location);
-
+        // if (err) {
+        //     switch (err.errorCode) {
+        //         case 716:
+        //             return error('Media not found. ');
         //
-        this.send();
-    };
+        //         default:
+        //             return error(err);
+        //     }
+        // }
 
+        return status;
+    }
 }
