@@ -11,10 +11,10 @@ Radarr and sonarr will henceforth be called 'library managers'
 - [x] Login/Register (`passport`)
 - [ ] Timestamp updating (possibly through websocket?)
 - [ ] Episode file serving   
-    [ ] Made in a way that could be decoupled from rivulet-server, in case library manager is not present on current environment.
+    - [ ] Made in a way that could be decoupled from rivulet-server, in case library manager is not present on current environment.
 - Casting
     - [x] Device discovery ([SSDP](https://www.npmjs.com/package/node-ssdp)): both gcast+DLNA can be discovered with this method
-    - [ ] Chromecast implementation ([inspiration](https://github.com/xat/castnow))
+    - [x] Chromecast implementation ([inspiration](https://github.com/xat/castnow))
     - [ ] DLNA implementation ([inspiration](https://github.com/xat/dlnacast))
     - [ ] Timestamp updating
 - [ ] Casting nicetohaves
