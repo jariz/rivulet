@@ -30,4 +30,16 @@ Radarr and sonarr will henceforth be called 'library managers'
 - [ ] error handler (json instead of html with `pre` tag)
 
 ### Later on...
+- DASH streaming.
+   - [ ] Generate mpd file
+   - [ ] Make transcoding endpoint accept different bitrates
+   - [ ] Migrate player over to [DASH.js](http://reference.dashif.org/dash.js/nightly/samples/dash-if-reference-player/index.html)
+- Library management
+    The endgoal is of course for rivulet to be completely standalone.  
+    For now this is outside of the scope because we want rivulet to focus on creating the best playback experience possible,     without bothering too much about the underlying library management.
+    - [ ] Add directories
+        - [ ] From file system
+        - [ ] From external source? (SMB, DLNA)
+    - [ ] Read metadata files
+    - [ ] Detect file changes in source, trigger rescan
 - decide if rivulet-server & rivulet-client should be merged for easier setup?
